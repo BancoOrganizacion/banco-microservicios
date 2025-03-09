@@ -1,4 +1,4 @@
-import { IsString, IsEmail, IsNotEmpty, Length, IsOptional, IsMongoId } from 'class-validator';
+import { IsString, IsEmail, IsNotEmpty, Length, IsOptional, IsMongoId, MinLength } from 'class-validator';
 import { IsEcuadorianId, IsEcuadorianPhone, IsValidEmail } from '../../validador';
 
 export class CreateUsuarioDto {
@@ -31,4 +31,14 @@ export class CreateUsuarioDto {
   @IsMongoId()
   @IsNotEmpty()
   rol: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @Length(4, 20)
+  nombre_usuario: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(8)
+  contraseña: string;
 }
