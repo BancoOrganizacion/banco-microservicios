@@ -11,6 +11,7 @@ import { RolesModule } from './roles/roles.module';
     MongooseModule.forRoot('mongodb://admin:Banco123*@localhost:27018/bancodb?authSource=admin'),
     UsuariosModule,
     RolesModule,
+    
   ],
   controllers: [AppController],
   providers: [AppService],
