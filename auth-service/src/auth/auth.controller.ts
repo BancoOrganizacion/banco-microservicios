@@ -1,6 +1,7 @@
 import { 
     Controller, 
-    Post, 
+    Post,
+    Get, 
     Body, 
     HttpException, 
     HttpStatus, 
@@ -12,6 +13,9 @@ import {
   import { RegisterCodeDto } from './dto/register-code.dto';
   import { ValidateCodeDto } from './dto/validate-code.dto';
   import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+  import { UsuariosService } from '../../../users-microservice/src/usuarios/usuarios.service';
+
+  
   
   @Controller('auth')
   export class AuthController {
@@ -40,7 +44,7 @@ import {
         );
       }
     }
-  
+      
     @Post('registro/validar')
     async validateRegistrationCode(@Body() validateCodeDto: ValidateCodeDto) {
       try {

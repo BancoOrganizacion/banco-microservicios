@@ -9,6 +9,7 @@ import { RegistrationCode, RegistrationCodeSchema } from './schemas/registration
 import { UsuariosModule } from '../../../users-microservice/src/usuarios/usuarios.module';
 import { jwtConstants } from '../config/jwt.config';
 
+
 @Module({
   imports: [
     MongooseModule.forFeature([
@@ -20,7 +21,9 @@ import { jwtConstants } from '../config/jwt.config';
       signOptions: { expiresIn: '24h' },
     }),
     UsuariosModule,
+     
   ],
+  
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],
   exports: [AuthService],
