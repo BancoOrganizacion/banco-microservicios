@@ -103,11 +103,14 @@ export class UsuariosService {
   }
 
   async findByUsername(username: string) {
-    return this.cuentaAppModel.findOne({ 
+    let usuario = this.cuentaAppModel.findOne({ 
       nombre_usuario: username 
     }).populate({
-      path: 'persona',
-      populate: { path: 'rol' }
-    });
+      path:'persona',
+      populate:{path:'rol'}
+    })
+    //console.log(usuario)
+    return usuario
   }
+  
 }

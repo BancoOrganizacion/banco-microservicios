@@ -16,9 +16,12 @@ export class AuthService {
 
   async validateUser(username: string, password: string): Promise<string> {
     // Obtener el usuario y su cuenta de la base de datos
+    console.log(`Buscando usuario`);
     const cuenta = await this.usuariosService.findByUsername(username);
+    console.log(cuenta)
 
     if (!cuenta) {
+      console.log("cuenta no valida")
       throw new UnauthorizedException('Credenciales inválidas');
     }
 
@@ -27,14 +30,14 @@ export class AuthService {
 
     if (!isPasswordValid) {
       // Opcional: incrementar contador de intentos fallidos
+      console.log("clave no valida")
       throw new UnauthorizedException('Credenciales inválidas');
     }
 
     // Generar token JWT
     const payload = { 
       username: cuenta.nombre_usuario, 
-      sub: cuenta.persona.toString(),
-      roles: [cuenta.persona.rol.toString()]
+      rol: [cuenta.persona.rol.toString()]
     };
 
     return this.jwtService.sign(payload);
