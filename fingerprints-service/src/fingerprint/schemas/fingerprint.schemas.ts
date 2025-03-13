@@ -22,3 +22,4 @@ export class DedoRegistrado extends Document {
 }
 
 export const DedosRegistrados = SchemaFactory.createForClass(DedoRegistrado)
+
