@@ -3,15 +3,21 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { DedoRegistrado, DedosRegistrados } from './schemas/fingerprint.schemas';
 import { FingerprintService } from './fingerprint.service';
 import { FingerprintController } from './fingerprint.controller';
+import { DedoPatron, DedoPatronSchema } from './schemas/dedopatron.schema';
 
 @Module({
-    imports:[
+    imports: [
         MongooseModule.forFeature([{
-            name:DedoRegistrado.name,
+            name: DedoRegistrado.name,
             schema: DedosRegistrados
-        }])
+        },
+        {
+            name:DedoPatron.name,
+            schema: DedoPatronSchema
+        },])
     ],
-    providers:[FingerprintService],
-    controllers:[FingerprintController]
+    providers: [FingerprintService],
+    controllers: [FingerprintController],
+    exports:[FingerprintService],
 })
-export class FingerprintModule {}
+export class FingerprintModule { }
