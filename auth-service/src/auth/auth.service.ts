@@ -34,12 +34,17 @@ export class AuthService {
       throw new UnauthorizedException('Credenciales inválidas');
     }
 
-    // Generar token JWT
+    
+
+    const userId = cuenta.persona._id.toString();
+    console.log("ID del usuario:", userId);
+
     const payload = { 
       username: cuenta.nombre_usuario, 
-      rol: [cuenta.persona.rol.toString()]
+      userId: userId // Solo el ID del usuario como string
     };
 
+    console.log("Payload final:", payload);
     return this.jwtService.sign(payload);
   }
 
