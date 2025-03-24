@@ -1,27 +1,30 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import * as bcrypt from 'bcrypt';
 import { RegistrationCode } from './schemas/registration-code.schema';
 import { UsuariosService } from '../../../users-microservice/src/usuarios/usuarios.service';
+import { TelegramService } from '../telegram/telegram.service';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     @InjectModel(RegistrationCode.name) private registrationCodeModel: Model<RegistrationCode>,
     private jwtService: JwtService,
     private usuariosService: UsuariosService,
+    private telegramService: TelegramService,
   ) {}
 
   async validateUser(username: string, password: string): Promise<string> {
     // Obtener el usuario y su cuenta de la base de datos
-    console.log(`Buscando usuario`);
+    this.logger.debug(`Buscando usuario ${username}`);
     const cuenta = await this.usuariosService.findByUsername(username);
-    console.log(cuenta)
 
     if (!cuenta) {
-      console.log("cuenta no valida")
+      this.logger.warn(`Cuenta no válida para usuario: ${username}`);
       throw new UnauthorizedException('Credenciales inválidas');
     }
 
@@ -29,22 +32,19 @@ export class AuthService {
     const isPasswordValid = await bcrypt.compare(password, cuenta.contraseña);
 
     if (!isPasswordValid) {
-      // Opcional: incrementar contador de intentos fallidos
-      console.log("clave no valida")
+      this.logger.warn(`Contraseña no válida para usuario: ${username}`);
       throw new UnauthorizedException('Credenciales inválidas');
     }
 
-    
-
     const userId = cuenta.persona._id.toString();
-    console.log("ID del usuario:", userId);
+    this.logger.debug(`ID del usuario: ${userId}`);
 
     const payload = { 
       username: cuenta.nombre_usuario, 
-      userId: userId // Solo el ID del usuario como string
+      userId: userId
     };
 
-    console.log("Payload final:", payload);
+    this.logger.debug(`Payload final: ${JSON.stringify(payload)}`);
     return this.jwtService.sign(payload);
   }
 
@@ -73,6 +73,26 @@ export class AuthService {
     });
 
     await nuevoRegistro.save();
+
+    // Intentar enviar el código por Telegram si el usuario tiene número de teléfono
+    if (usuario.telefono) {
+      try {
+        // Convertir el teléfono ecuatoriano a un formato que Telegram pueda manejar
+        // Asumiendo que el formato es 0912345678, necesitamos convertirlo a 593912345678
+        // Quitamos el 0 inicial y añadimos el código de país 593
+        const telegramPhone = `593${usuario.telefono.substring(1)}`;
+        
+        // Tratar de enviar el mensaje (esto podría fallar si el usuario no ha iniciado una conversación con el bot)
+        await this.telegramService.sendVerificationCode(telegramPhone, code);
+        this.logger.log(`Código de verificación enviado a ${telegramPhone} por Telegram`);
+      } catch (error) {
+        this.logger.error(`Error al enviar código por Telegram: ${error.message}`);
+        // No lanzamos excepción aquí, para que la API siga funcionando
+        // incluso si hay un problema con Telegram
+      }
+    } else {
+      this.logger.warn(`Usuario ${userId} no tiene número de teléfono registrado para enviar código por Telegram`);
+    }
 
     return code;
   }
