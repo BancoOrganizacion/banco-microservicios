@@ -3,10 +3,8 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
-import { TelegramService } from './telegram/telegram.service';
 import { TelegramModule } from './telegram/telegram.module';
 import { ConfigModule } from '@nestjs/config';
-
 
 @Module({
   imports: [
@@ -14,10 +12,10 @@ import { ConfigModule } from '@nestjs/config';
       isGlobal: true, // Hace que las variables de entorno estén disponibles globalmente
     }),
     MongooseModule.forRoot('mongodb://admin:Banco123*@localhost:27018/bancodb?authSource=admin'),
-    AuthModule,
-    TelegramModule
+    TelegramModule,
+    AuthModule
   ],
   controllers: [AppController],
-  providers: [AppService, TelegramService],
+  providers: [AppService],
 })
 export class AppModule {}

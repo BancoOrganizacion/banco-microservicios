@@ -13,7 +13,7 @@ import { TelegramModule } from '../telegram/telegram.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot(), // Carga las variables de entorno
+    ConfigModule.forRoot(),
     MongooseModule.forFeature([
       { name: RegistrationCode.name, schema: RegistrationCodeSchema },
     ]),
@@ -23,7 +23,7 @@ import { TelegramModule } from '../telegram/telegram.module';
       signOptions: { expiresIn: '24h' },
     }),
     UsuariosModule,
-    TelegramModule,, // Agregamos el módulo de Telegram
+    TelegramModule
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],
