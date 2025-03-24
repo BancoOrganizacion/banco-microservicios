@@ -15,16 +15,17 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: any) {
-    const usuario = await this.usuariosService.findOne(payload.sub);
+    // Cambiado para usar 'userId' en lugar de 'sub' para que coincida con el payload generado
+    const usuario = await this.usuariosService.findOne(payload.userId);
 
     if (!usuario) {
       throw new UnauthorizedException();
     }
 
+    // Devolvemos un objeto con la misma estructura que el payload original
     return { 
-      userId: payload.sub, 
-      username: payload.username,
-      roles: payload.roles
+      userId: payload.userId,
+      username: payload.username
     };
   }
 }

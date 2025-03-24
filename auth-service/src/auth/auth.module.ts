@@ -17,12 +17,12 @@ import { TelegramModule } from '../telegram/telegram.module';
     MongooseModule.forFeature([
       { name: RegistrationCode.name, schema: RegistrationCodeSchema },
     ]),
-    PassportModule,
+    PassportModule.register({ defaultStrategy: 'jwt' }), // Registrar explícitamente la estrategia por defecto
     JwtModule.register({
       secret: jwtConstants.secret,
       signOptions: { expiresIn: '24h' },
     }),
-    UsuariosModule,
+    UsuariosModule, // Asegurarse de que este módulo se importe correctamente
     TelegramModule
   ],
   controllers: [AuthController],

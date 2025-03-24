@@ -6,7 +6,8 @@ import {
   HttpException, 
   HttpStatus, 
   UseGuards,
-  Request
+  Request,
+  Logger
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
@@ -18,6 +19,8 @@ import { TelegramService } from '../telegram/telegram.service';
 
 @Controller('auth')
 export class AuthController {
+  private readonly logger = new Logger(AuthController.name);
+
   constructor(
     private readonly authService: AuthService,
     private readonly telegramService: TelegramService
@@ -37,9 +40,24 @@ export class AuthController {
   @Post('registro')
   async generateRegistrationCode(@Body() registerCodeDto: RegisterCodeDto, @Request() req) {
     try {
-      const code = await this.authService.generateRegistrationCode(req.user.userId, registerCodeDto.tipo);
+      // Registrar el objeto completo de la solicitud para depuración
+      this.logger.debug(`Objeto Request: ${JSON.stringify(req.user)}`);
+      
+      // Si no hay userId, usamos el body directamente para depuración
+      const userId = req.user?.userId;
+      
+      if (!userId) {
+        this.logger.error('ID de usuario no disponible en el token JWT');
+        throw new HttpException(
+          'ID de usuario no disponible en el token JWT', 
+          HttpStatus.BAD_REQUEST
+        );
+      }
+
+      const code = await this.authService.generateRegistrationCode(userId, registerCodeDto.tipo);
       return { code };
     } catch (error) {
+      this.logger.error(`Error al generar código: ${error.message}`);
       throw new HttpException(
         error.message || 'Error al generar el código de registro', 
         HttpStatus.BAD_REQUEST

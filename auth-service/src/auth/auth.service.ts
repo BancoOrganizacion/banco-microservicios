@@ -39,13 +39,23 @@ export class AuthService {
     const userId = cuenta.persona._id.toString();
     this.logger.debug(`ID del usuario: ${userId}`);
 
+    // Creamos el payload asegurándonos de que userId esté definido
     const payload = { 
       username: cuenta.nombre_usuario, 
       userId: userId
     };
 
-    this.logger.debug(`Payload final: ${JSON.stringify(payload)}`);
-    return this.jwtService.sign(payload);
+    // Registrar el payload para depuración
+    this.logger.debug(`Payload del token: ${JSON.stringify(payload)}`);
+    
+    // Generar el token JWT
+    const token = this.jwtService.sign(payload);
+    
+    // Verificar el token decodificado para asegurarnos que contiene el userId
+    const decoded = this.jwtService.decode(token);
+    this.logger.debug(`Token decodificado: ${JSON.stringify(decoded)}`);
+    
+    return token;
   }
 
   async generateRegistrationCode(userId: string, tipo: string): Promise<string> {
