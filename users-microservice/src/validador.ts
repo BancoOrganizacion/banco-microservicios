@@ -1,5 +1,31 @@
 import { registerDecorator, ValidationOptions, ValidationArguments, isEmail } from 'class-validator';
 
+export function IsValidName(validationOptions?: ValidationOptions) {
+  return function (object: Object, propertyName: string) {
+    registerDecorator({
+      name: 'isValidName',
+      target: object.constructor,
+      propertyName: propertyName,
+      options: validationOptions,
+      validator: {
+        validate(value: any, args: ValidationArguments) {
+          // Verificar que es un string
+          if (typeof value !== 'string') return false;
+          
+          // Expresión regular que permite solo letras, espacios, guiones bajos y guiones medios
+          // Incluye soporte para caracteres acentuados y caracteres Unicode para nombres internacionales
+          const regex = /^[\p{L}\s_\-]+$/u;
+          
+          return regex.test(value);
+        },
+        defaultMessage(args: ValidationArguments) {
+          return `El campo ${args.property} solo puede contener letras, espacios, guiones bajos (_) y guiones medios (-)`;
+        }
+      }
+    });
+  };
+}
+
 export function IsEcuadorianId(validationOptions?: ValidationOptions) {
   return function (object: Object, propertyName: string) {
     registerDecorator({
@@ -64,6 +90,43 @@ export function IsEcuadorianId(validationOptions?: ValidationOptions) {
   };
 }
 
+// Función para crear un decorador personalizado para validación de contraseña segura
+export function IsStrongPassword(validationOptions?: ValidationOptions) {
+  return function (object: Object, propertyName: string) {
+    registerDecorator({
+      name: 'isStrongPassword',
+      target: object.constructor,
+      propertyName: propertyName,
+      options: validationOptions,
+      validator: {
+        validate(value: any, args: ValidationArguments) {
+          // Verificar que es un string
+          if (typeof value !== 'string') return false;
+          
+          // Verificar longitud mínima
+          if (value.length < 8) return false;
+          
+          // Verificar al menos una letra mayúscula
+          const hasUpperCase = /[A-Z]/.test(value);
+          
+          // Verificar al menos una letra minúscula
+          const hasLowerCase = /[a-z]/.test(value);
+          
+          // Verificar al menos un número
+          const hasNumber = /\d/.test(value);
+          
+          // Verificar al menos un carácter especial
+          const hasSpecialChar = /[@$!%*?&]/.test(value);
+          
+          return hasUpperCase && hasLowerCase && hasNumber && hasSpecialChar;
+        },
+        defaultMessage(args: ValidationArguments) {
+          return 'La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial (@$!%*?&)';
+        }
+      }
+    });
+  };
+}
 
 export function IsValidEmail(validationOptions?: ValidationOptions) {
   return function (object: Object, propertyName: string) {
@@ -103,6 +166,8 @@ export function IsValidEmail(validationOptions?: ValidationOptions) {
     });
   };
 }
+
+
 
 export function IsEcuadorianPhone(validationOptions?: ValidationOptions) {
     return function (object: Object, propertyName: string) {
