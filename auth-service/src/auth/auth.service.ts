@@ -84,24 +84,18 @@ export class AuthService {
 
     await nuevoRegistro.save();
 
-    // Intentar enviar el código por Telegram si el usuario tiene número de teléfono
-    if (usuario.telefono) {
-      try {
-        // Convertir el teléfono ecuatoriano a un formato que Telegram pueda manejar
-        // Asumiendo que el formato es 0912345678, necesitamos convertirlo a 593912345678
-        // Quitamos el 0 inicial y añadimos el código de país 593
-        const telegramPhone = `593${usuario.telefono.substring(1)}`;
-        
-        // Tratar de enviar el mensaje (esto podría fallar si el usuario no ha iniciado una conversación con el bot)
-        await this.telegramService.sendVerificationCode(telegramPhone, code);
-        this.logger.log(`Código de verificación enviado a ${telegramPhone} por Telegram`);
-      } catch (error) {
-        this.logger.error(`Error al enviar código por Telegram: ${error.message}`);
-        // No lanzamos excepción aquí, para que la API siga funcionando
-        // incluso si hay un problema con Telegram
+    // Intentar enviar el código directamente por Telegram usando el ID del usuario
+    try {
+      const result = await this.telegramService.sendVerificationCodeByUserId(userId, code);
+      
+      if (result) {
+        this.logger.log(`Código de verificación enviado al usuario ${userId} por Telegram`);
+      } else {
+        this.logger.warn(`No se pudo enviar el código por Telegram al usuario ${userId}. El usuario no tiene Telegram vinculado.`);
       }
-    } else {
-      this.logger.warn(`Usuario ${userId} no tiene número de teléfono registrado para enviar código por Telegram`);
+    } catch (error) {
+      this.logger.error(`Error al enviar código por Telegram: ${error.message}`);
+      // No lanzamos excepción aquí, continuamos con el flujo
     }
 
     return code;

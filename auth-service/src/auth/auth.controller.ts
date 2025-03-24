@@ -13,9 +13,7 @@ import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterCodeDto } from './dto/register-code.dto';
 import { ValidateCodeDto } from './dto/validate-code.dto';
-import { RegisterTelegramDto } from '../telegram/dto/register-telegram.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
-import { TelegramService } from '../telegram/telegram.service';
 
 @Controller('auth')
 export class AuthController {
@@ -23,7 +21,6 @@ export class AuthController {
 
   constructor(
     private readonly authService: AuthService,
-    private readonly telegramService: TelegramService
   ) {}
 
   @Post('login')
@@ -37,13 +34,9 @@ export class AuthController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Post('registro')
+  @Post('codigo/generar')
   async generateRegistrationCode(@Body() registerCodeDto: RegisterCodeDto, @Request() req) {
     try {
-      // Registrar el objeto completo de la solicitud para depuración
-      this.logger.debug(`Objeto Request: ${JSON.stringify(req.user)}`);
-      
-      // Si no hay userId, usamos el body directamente para depuración
       const userId = req.user?.userId;
       
       if (!userId) {
@@ -65,7 +58,7 @@ export class AuthController {
     }
   }
     
-  @Post('registro/validar')
+  @Post('codigo/validar')
   async validateRegistrationCode(@Body() validateCodeDto: ValidateCodeDto) {
     try {
       const isValid = await this.authService.validateRegistrationCode(
@@ -80,47 +73,6 @@ export class AuthController {
     } catch (error) {
       throw new HttpException(
         error.message || 'Error al validar el código', 
-        HttpStatus.BAD_REQUEST
-      );
-    }
-  }
-
-  @Post('telegram/register')
-  async registerTelegramChat(@Body() registerTelegramDto: RegisterTelegramDto) {
-    try {
-      // Registramos la asociación entre el teléfono y el chat ID
-      await this.telegramService.registerTelegramChat(
-        registerTelegramDto.telefono, 
-        registerTelegramDto.chatId
-      );
-      
-      // Enviamos un mensaje de confirmación
-      const message = 'Tu cuenta ha sido vinculada con éxito a nuestro servicio. Recibirás códigos de verificación a través de este chat.';
-      await this.telegramService.sendMessage(registerTelegramDto.chatId, message);
-      
-      return { 
-        success: true,
-        message: 'Chat de Telegram registrado con éxito'
-      };
-    } catch (error) {
-      throw new HttpException(
-        error.message || 'Error al registrar el chat de Telegram', 
-        HttpStatus.BAD_REQUEST
-      );
-    }
-  }
-
-  @Post('telegram/test')
-  async testTelegramMessage(@Body() data: { chatId: string, message: string }) {
-    try {
-      await this.telegramService.sendMessage(data.chatId, data.message);
-      return { 
-        success: true,
-        message: 'Mensaje enviado con éxito'
-      };
-    } catch (error) {
-      throw new HttpException(
-        error.message || 'Error al enviar mensaje por Telegram', 
         HttpStatus.BAD_REQUEST
       );
     }

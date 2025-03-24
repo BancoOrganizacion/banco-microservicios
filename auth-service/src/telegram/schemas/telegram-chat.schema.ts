@@ -6,7 +6,7 @@ import { Document, Schema as MongooseSchema } from 'mongoose';
   collection: 'telegram_chats',
 })
 export class TelegramChat extends Document {
-  @Prop({ required: true, unique: true })
+  @Prop({ required: false, unique: true, sparse: true })
   telefono: string;
 
   @Prop({ required: true })
@@ -15,7 +15,7 @@ export class TelegramChat extends Document {
   @Prop({ 
     type: MongooseSchema.Types.ObjectId, 
     ref: 'Usuario',
-    required: false 
+    required: true
   })
   usuario: MongooseSchema.Types.ObjectId;
 

@@ -4,6 +4,8 @@ import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { TelegramChat } from './schemas/telegram-chat.schema';
+import { TelegramToken } from './schemas/telegram-token.schema';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class TelegramService {
@@ -12,7 +14,8 @@ export class TelegramService {
 
   constructor(
     private configService: ConfigService,
-    @InjectModel(TelegramChat.name) private telegramChatModel: Model<TelegramChat>
+    @InjectModel(TelegramChat.name) private telegramChatModel: Model<TelegramChat>,
+    @InjectModel(TelegramToken.name) private telegramTokenModel: Model<TelegramToken>
   ) {
     const token = this.configService.get<string>('TELEGRAM_BOT_TOKEN');
     
@@ -22,8 +25,88 @@ export class TelegramService {
     }
 
     // Crear el bot con el token
-    this.bot = new TelegramBot(token, { polling: false });
+    this.bot = new TelegramBot(token, { polling: true });
     this.logger.log('Telegram bot service initialized');
+
+    // Configurar el manejador para el comando /start con token
+    this.bot.onText(/\/start (.+)/, this.handleStartCommand.bind(this));
+  }
+
+  /**
+   * Maneja el comando /start cuando un usuario inicia el bot con un token
+   * @param msg Mensaje de Telegram
+   * @param match Resultado de la expresión regular
+   */
+  private async handleStartCommand(msg: TelegramBot.Message, match: RegExpExecArray) {
+    const chatId = msg.chat.id.toString();
+    const token = match[1];
+
+    this.logger.log(`Received /start command with token: ${token} from chat ${chatId}`);
+
+    try {
+      // Buscar el token en la base de datos
+      const tokenDoc = await this.telegramTokenModel.findOne({ 
+        token, 
+        usado: false,
+        expiracion: { $gt: new Date() }
+      });
+
+      if (!tokenDoc) {
+        await this.sendMessage(chatId, 'El enlace que has utilizado no es válido o ha expirado. Por favor, genera un nuevo enlace desde la aplicación.');
+        return;
+      }
+
+      // Vincular el chat de Telegram con el usuario
+      await this.registerTelegramChatByUserId(tokenDoc.usuario.toString(), chatId);
+
+      // Marcar el token como usado
+      tokenDoc.usado = true;
+      await tokenDoc.save();
+
+      // Enviar mensaje de confirmación
+      await this.sendMessage(chatId, '¡Tu cuenta ha sido vinculada con éxito! Ahora recibirás los códigos de verificación a través de este chat de Telegram.');
+    } catch (error) {
+      this.logger.error(`Error processing start command: ${error.message}`);
+      await this.sendMessage(chatId, 'Ha ocurrido un error al vincular tu cuenta. Por favor, intenta nuevamente más tarde.');
+    }
+  }
+
+  /**
+   * Genera un token único para vincular una cuenta de usuario con Telegram
+   * @param userId ID del usuario en la base de datos
+   * @returns Objeto con el token y el enlace profundo
+   */
+  async generateTelegramLinkToken(userId: string): Promise<{ token: string, deepLink: string }> {
+    try {
+      // Generar token aleatorio
+      const token = crypto.randomBytes(16).toString('hex');
+      
+      // Establecer expiración (24 horas)
+      const expiracion = new Date();
+      expiracion.setHours(expiracion.getHours() + 24);
+
+      // Guardar token en la base de datos
+      const nuevoToken = new this.telegramTokenModel({
+        usuario: userId,
+        token,
+        expiracion,
+        usado: false
+      });
+
+      await nuevoToken.save();
+
+      // Obtener el nombre del bot para el enlace profundo
+      const botInfo = await this.bot.getMe();
+      const botUsername = botInfo.username;
+
+      // Crear enlace profundo
+      const deepLink = `https://t.me/${botUsername}?start=${token}`;
+
+      return { token, deepLink };
+    } catch (error) {
+      this.logger.error(`Error generating Telegram link token: ${error.message}`);
+      throw error;
+    }
   }
 
   /**
@@ -86,6 +169,37 @@ export class TelegramService {
   }
 
   /**
+   * Registra o actualiza la asociación entre un usuario y un ID de chat de Telegram
+   * @param userId ID del usuario en la base de datos
+   * @param chatId ID de chat de Telegram
+   * @returns La asociación creada o actualizada
+   */
+  async registerTelegramChatByUserId(userId: string, chatId: string): Promise<TelegramChat> {
+    try {
+      // Buscar si ya existe una asociación para este usuario
+      let telegramChat = await this.telegramChatModel.findOne({ usuario: userId });
+      
+      if (telegramChat) {
+        // Actualizar el chatId si ya existe
+        telegramChat.chatId = chatId;
+        telegramChat.activo = true;
+        return telegramChat.save();
+      } else {
+        // Crear nueva asociación
+        telegramChat = new this.telegramChatModel({
+          usuario: userId,
+          chatId,
+          activo: true
+        });
+        return telegramChat.save();
+      }
+    } catch (error) {
+      this.logger.error(`Error registering Telegram chat by user ID: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
    * Busca el ID de chat de Telegram asociado a un número de teléfono
    * @param telefono Número de teléfono (formato ecuatoriano 09XXXXXXXX)
    * @returns El ID de chat de Telegram o null si no se encuentra
@@ -99,9 +213,45 @@ export class TelegramService {
       
       return telegramChat ? telegramChat.chatId : null;
     } catch (error) {
-      this.logger.error(`Error finding Telegram chat ID: ${error.message}`);
+      this.logger.error(`Error finding Telegram chat ID by phone: ${error.message}`);
       return null;
     }
+  }
+
+  /**
+   * Busca el ID de chat de Telegram asociado a un usuario
+   * @param userId ID del usuario en la base de datos
+   * @returns El ID de chat de Telegram o null si no se encuentra
+   */
+  async findChatIdByUserId(userId: string): Promise<string | null> {
+    try {
+      const telegramChat = await this.telegramChatModel.findOne({ 
+        usuario: userId, 
+        activo: true 
+      });
+      
+      return telegramChat ? telegramChat.chatId : null;
+    } catch (error) {
+      this.logger.error(`Error finding Telegram chat ID by user ID: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * Envía un código de verificación a un usuario mediante Telegram usando su ID
+   * @param userId ID del usuario en la base de datos
+   * @param code Código de verificación
+   * @returns Promise con el resultado del envío o null si no se encuentra asociación
+   */
+  async sendVerificationCodeByUserId(userId: string, code: string): Promise<TelegramBot.Message | null> {
+    const chatId = await this.findChatIdByUserId(userId);
+    
+    if (!chatId) {
+      this.logger.warn(`No Telegram chat ID found for user: ${userId}`);
+      return null;
+    }
+    
+    return this.sendVerificationCode(chatId, code);
   }
 
   /**
