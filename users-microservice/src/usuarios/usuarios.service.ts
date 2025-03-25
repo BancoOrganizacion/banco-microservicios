@@ -57,7 +57,7 @@ export class UsuariosService {
   async findAll(): Promise<Usuario[]> {
     return this.usuarioModel.find().populate('rol').exec();
   }
-
+  
   async findOne(id: string): Promise<Usuario> {
     const usuario = await this.usuarioModel.findById(id).populate('rol').exec();
     if (!usuario) {
