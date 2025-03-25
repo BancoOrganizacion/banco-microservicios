@@ -1,9 +1,9 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { DedoRegistrado, Dedos } from './schemas/fingerprint.schemas';
-import { DedoPatron } from './schemas/dedopatron.schema';
-import { CreateFingerpatternDto } from './dto/create-fingerpattern.dto';
+import { DedoRegistrado, Dedos } from 'shared-models';
+import { DedoPatron } from 'shared-models';
+import { CreateFingerpatternDto } from 'shared-models';
 
 @Injectable()
 export class FingerprintService {

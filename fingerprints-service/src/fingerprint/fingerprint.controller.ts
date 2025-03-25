@@ -1,7 +1,7 @@
 import { Body, Controller,Post } from '@nestjs/common';
 import { FingerprintService } from './fingerprint.service';
-import { Dedos } from './schemas/fingerprint.schemas';
-import { CreateFingerpatternDto } from './dto/create-fingerpattern.dto';
+import { Dedos } from 'shared-models';
+import { CreateFingerpatternDto } from 'shared-models';
 
 @Controller('fingerprint')
 export class FingerprintController {

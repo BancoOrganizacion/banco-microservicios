@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { DedoRegistrado, DedosRegistrados } from './schemas/fingerprint.schemas';
+import { DedoRegistrado, DedosRegistrados } from 'shared-models';
 import { FingerprintService } from './fingerprint.service';
 import { FingerprintController } from './fingerprint.controller';
-import { DedoPatron, DedoPatronSchema } from './schemas/dedopatron.schema';
+import { DedoPatron, DedoPatronSchema } from 'shared-models';
 
 @Module({
     imports: [
