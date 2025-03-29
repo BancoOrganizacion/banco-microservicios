@@ -10,9 +10,9 @@ import {
   Logger
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { LoginDto } from './dto/login.dto';
-import { RegisterCodeDto } from './dto/register-code.dto';
-import { ValidateCodeDto } from './dto/validate-code.dto';
+import { LoginDto } from 'shared-models';
+import { RegisterCodeDto } from 'shared-models';
+import { ValidateCodeDto } from 'shared-models';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 
 @Controller('auth')

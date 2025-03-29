@@ -6,7 +6,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
-import { RegistrationCode, RegistrationCodeSchema } from './schemas/registration-code.schema';
+import { RegistrationCode, RegistrationCodeSchema } from 'shared-models';
 import { UsuariosModule } from '../../../users-microservice/src/usuarios/usuarios.module';
 import { jwtConstants } from '../config/jwt.config';
 import { TelegramModule } from '../telegram/telegram.module';

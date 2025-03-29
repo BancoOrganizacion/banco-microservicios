@@ -3,8 +3,8 @@ import * as TelegramBot from 'node-telegram-bot-api';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { TelegramChat } from './schemas/telegram-chat.schema';
-import { TelegramToken } from './schemas/telegram-token.schema';
+import { TelegramChat } from 'shared-models';
+import { TelegramToken } from 'shared-models';
 import * as crypto from 'crypto';
 
 @Injectable()
