@@ -7,8 +7,7 @@ import {
   HttpStatus, 
   UseGuards,
   Request,
-  Logger,
-  Headers
+  Logger
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from 'shared-models';
@@ -38,7 +37,7 @@ export class AuthController {
   @Post('codigo/generar')
   async generateRegistrationCode(@Body() registerCodeDto: RegisterCodeDto, @Request() req) {
     try {
-      const userId = req.user?.id_usuario;
+      const userId = req.user?.userId;
       
       if (!userId) {
         this.logger.error('ID de usuario no disponible en el token JWT');
@@ -75,30 +74,6 @@ export class AuthController {
       throw new HttpException(
         error.message || 'Error al validar el código', 
         HttpStatus.BAD_REQUEST
-      );
-    }
-  }
-
-  // Ejemplo de endpoint para decodificar token (solo para demostración)
-  @UseGuards(JwtAuthGuard)
-  @Get('info-token')
-  async getTokenInfo(@Request() req, @Headers('authorization') authHeader: string) {
-    try {
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        throw new HttpException('Token no proporcionado', HttpStatus.BAD_REQUEST);
-      }
-      
-      const token = authHeader.substring(7); // Elimina 'Bearer ' del string
-      const decodedToken = this.authService.decodeToken(token);
-      
-      return {
-        id_usuario: decodedToken.id_usuario,
-        id_rol: decodedToken.id_rol
-      };
-    } catch (error) {
-      throw new HttpException(
-        error.message || 'Error al decodificar el token', 
-        HttpStatus.UNAUTHORIZED
       );
     }
   }

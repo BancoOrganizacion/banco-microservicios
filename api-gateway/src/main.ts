@@ -1,12 +1,16 @@
+// api-gateway/src/main.ts
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { Logger } from '@nestjs/common';
 
 async function bootstrap() {
+  const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule);
-<<<<<<< HEAD
-  app.enableCors();
-=======
->>>>>>> f172acded509c085c9fad23525507d8d09cb30c0
-  await app.listen(process.env.PORT ?? 3000);
+  
+  app.enableCors(); // Habilitar CORS para el frontend
+  
+  const port = process.env.PORT || 3000;
+  await app.listen(port);
+  logger.log(`API Gateway está ejecutándose en: ${await app.getUrl()}`);
 }
 bootstrap();
