@@ -13,11 +13,22 @@ import {
   import { CreateUsuarioDto } from 'shared-models';
   import { UpdateUsuarioDto } from 'shared-models';
   import { UpdateUsuarioRolDto } from 'shared-models';
+  import { MessagePattern } from '@nestjs/microservices';
   
   
   @Controller('usuarios')
   export class UsuariosController {
     constructor(private readonly usuariosService: UsuariosService) {}
+
+    @MessagePattern('users.findByUsername')
+    async findByUsername(data: { username: string }) {
+      return this.usuariosService.findByUsername(data.username);
+    }
+  
+    @MessagePattern('users.findOne')
+    async findOneByMs(id: string) {
+      return this.usuariosService.findOne(id);
+    }
   
     @Post()
     async create(@Body() createUsuarioDto: CreateUsuarioDto) {

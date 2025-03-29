@@ -8,7 +8,7 @@
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-    "start": "node dist/auth-service/src/main.js",
+    "start": "node dist/main.js",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/auth-service/src/main.js",
@@ -35,13 +35,15 @@
     "bcrypt": "^5.1.1",
     "class-validator": "^0.14.1",
     "dotenv": "^16.4.7",
+    "ioredis": "^5.6.0",
     "mongoose": "^8.0.0",
     "node-telegram-bot-api": "^0.66.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
+    "redis": "^4.7.0",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.1",
-    "shared-models":"*"
+    "shared-models": "*"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",
