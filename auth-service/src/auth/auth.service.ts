@@ -14,7 +14,7 @@ export class AuthService {
   constructor(
     @InjectModel(RegistrationCode.name) private registrationCodeModel: Model<RegistrationCode>,
     private jwtService: JwtService,
-    private usersClientService: UsersClientService, // Reemplazamos usuariosService por usersClientService
+    private usersClientService: UsersClientService,
     private telegramService: TelegramService,
   ) {}
 
@@ -37,12 +37,14 @@ export class AuthService {
     }
 
     const userId = cuenta.persona._id.toString();
-    this.logger.debug(`ID del usuario: ${userId}`);
+    const rolId = cuenta.persona.rol._id.toString();
+    
+    this.logger.debug(`ID del usuario: ${userId}, ID del rol: ${rolId}`);
 
-    // Creamos el payload asegurándonos de que userId esté definido
+    // Creamos el payload solo con id_usuario y id_rol
     const payload = { 
-      username: cuenta.nombre_usuario, 
-      userId: userId
+      id_usuario: userId,
+      id_rol: rolId
     };
 
     // Registrar el payload para depuración
@@ -51,13 +53,36 @@ export class AuthService {
     // Generar el token JWT
     const token = this.jwtService.sign(payload);
     
-    // Verificar el token decodificado para asegurarnos que contiene el userId
+    // Verificar el token decodificado para asegurarnos que contiene los IDs correctos
     const decoded = this.jwtService.decode(token);
     this.logger.debug(`Token decodificado: ${JSON.stringify(decoded)}`);
     
     return token;
   }
 
+  // Método para descifrar el token y obtener id_usuario e id_rol
+  decodeToken(token: string): { id_usuario: string, id_rol: string } {
+    try {
+      // Verificar y descifrar el token
+      const payload = this.jwtService.verify(token);
+      
+      // Verificar que el payload tenga la estructura esperada
+      if (!payload.id_usuario || !payload.id_rol) {
+        throw new UnauthorizedException('Token inválido: estructura de payload incorrecta');
+      }
+      
+      return {
+        id_usuario: payload.id_usuario,
+        id_rol: payload.id_rol
+      };
+
+    } catch (error) {
+      this.logger.error(`Error al descifrar token: ${error.message}`);
+      throw new UnauthorizedException('Token inválido o expirado');
+    }
+  }
+
+  
   async generateRegistrationCode(userId: string, tipo: string): Promise<string> {
     // Verificar si el usuario existe usando el cliente
     const usuario = await this.usersClientService.findOne(userId);

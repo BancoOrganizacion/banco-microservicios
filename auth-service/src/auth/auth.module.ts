@@ -7,6 +7,8 @@ import { RegistrationCode, RegistrationCodeSchema } from 'shared-models';
 import { UsersClientModule } from '../users-client/users-client.module';
 import { TelegramModule } from '../telegram/telegram.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { JwtStrategy } from './strategies/jwt.strategy';
+import { jwtConstants } from '../config/jwt.config';
 
 @Module({
   imports: [
@@ -16,16 +18,19 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
-        secret: configService.get('JWT_SECRET', 'default_secret'),
-        signOptions: { expiresIn: '24h' },
+        secret: configService.get<string>('JWT_SECRET', jwtConstants.secret),
+        signOptions: { 
+          expiresIn: configService.get<string>('JWT_EXPIRES_IN', jwtConstants.expiresIn),
+          algorithm: configService.get<string>('JWT_ALGORITHM', 'HS256') as any,
+        },
       }),
       inject: [ConfigService],
     }),
-    UsersClientModule, // Importamos el módulo cliente en lugar de UserModule
+    UsersClientModule,
     TelegramModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService],
+  providers: [AuthService, JwtStrategy],
   exports: [AuthService],
 })
 export class AuthModule {}
