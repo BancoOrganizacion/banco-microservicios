@@ -25,6 +25,9 @@ export class FingerprintService {
 
     // Check for duplicate fingers in the pattern
     const dedos = createFingerpatternDto.pattern.map(p => p.dedo);
+    console.log("Patron completo:", createFingerpatternDto.pattern);
+    console.log("Dedos extraídos:"+dedos);
+    console.log("Valores únicos:",[... new Set(dedos)])
     const uniqueDedos = new Set(dedos);
     if (uniqueDedos.size !== 5) {
       throw new BadRequestException('Los 5 dedos del patrón deben ser diferentes');

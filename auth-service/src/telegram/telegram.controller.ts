@@ -9,7 +9,7 @@ import {
     Logger
   } from '@nestjs/common';
   import { TelegramService } from './telegram.service';
-  import { GenerateTelegramLinkDto } from './dto/generate-telegram-link.dto';
+  import { GenerateTelegramLinkDto } from 'shared-models';
   import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
   
   @Controller('telegram')

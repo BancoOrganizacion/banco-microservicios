@@ -16,6 +16,11 @@ export * from './common/validador';
 export * from './common/config/database.config';
 export * from './common/config/jwt.config';
 
-export * from './fingerprint/dto/create-fingerpattern.dto'
-export * from './fingerprint/schemas/dedopatron.schema'
-export * from './fingerprint/schemas/fingerprint.schemas'
+export * from './fingerprint/dto/create-fingerpattern.dto';
+export * from './fingerprint/schemas/dedopatron.schema';
+export * from './fingerprint/schemas/fingerprint.schemas';
+
+export * from './telegram/dto/generate-telegram-link.dto';
+export * from './telegram/dto/register-telegram.dto';
+export * from './telegram/schemas/telegram-chat.schema';
+export * from './telegram/schemas/telegram-token.schema';
