@@ -140,4 +140,23 @@ export class AuthService {
 
     return true;
   }
+
+  async generateTokenForNewUser(userId: string, rolId: string): Promise<string> {
+    try {
+      // Creamos el payload solo con id_usuario y id_rol (similar a validateUser)
+      const payload = { 
+        id_usuario: userId,
+        id_rol: rolId
+      };
+      
+      this.logger.debug(`Generando token para usuario nuevo: ID=${userId}, Rol=${rolId}`);
+      
+      // Generar el token JWT
+      const token = this.jwtService.sign(payload);
+      return token;
+    } catch (error) {
+      this.logger.error(`Error al generar token para usuario nuevo: ${error.message}`);
+      throw error;
+    }
+  }
 }

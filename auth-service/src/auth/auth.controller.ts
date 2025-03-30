@@ -14,6 +14,7 @@ import { LoginDto } from 'shared-models';
 import { RegisterCodeDto } from 'shared-models';
 import { ValidateCodeDto } from 'shared-models';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { MessagePattern } from '@nestjs/microservices';
 
 @Controller('auth')
 export class AuthController {
@@ -37,7 +38,7 @@ export class AuthController {
   @Post('codigo/generar')
   async generateRegistrationCode(@Body() registerCodeDto: RegisterCodeDto, @Request() req) {
     try {
-      const userId = req.user?.userId;
+      const userId = req.user?.id_usuario; // Cambiar userId por id_usuario
       
       if (!userId) {
         this.logger.error('ID de usuario no disponible en el token JWT');
@@ -77,4 +78,18 @@ export class AuthController {
       );
     }
   }
+
+  @MessagePattern('auth.generateTokenAfterRegistration')
+  async generateTokenAfterRegistration(data: { username: string, userId: string, rolId: string }) {
+    try {
+      const token = await this.authService.generateTokenForNewUser(data.userId, data.rolId);
+      return { access_token: token };
+    } catch (error) {
+      this.logger.error(`Error al generar token después del registro: ${error.message}`);
+      throw new Error('No se pudo generar el token después del registro');
+    }
+  }
+
+  
 }
+
