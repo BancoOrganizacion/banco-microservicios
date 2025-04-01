@@ -24,12 +24,6 @@ export class RegistrationCode extends Document {
 
   @Prop({ default: false })
   usado: boolean;
-
-  @Prop({ type: Date })
-  ttlExpiracion: Date;
 }
 
 export const RegistrationCodeSchema = SchemaFactory.createForClass(RegistrationCode);
-
-// El campo sobre el que aplicamos el índice TTL debe existir en el esquema
-RegistrationCodeSchema.index({ ttlExpiracion: 1 }, { expireAfterSeconds: 0 });
