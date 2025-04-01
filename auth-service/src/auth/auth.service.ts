@@ -3,7 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import * as bcrypt from 'bcrypt';
-import { RegistrationCode } from 'shared-models';
+import { RegistrationCode, RegistrationCodeSchema } from 'shared-models';
 import { UsersClientService } from '../users-client/users-client.service';
 import { TelegramService } from '../telegram/telegram.service';
 
@@ -86,25 +86,29 @@ export class AuthService {
   async generateRegistrationCode(userId: string, tipo: string): Promise<string> {
     // Verificar si el usuario existe usando el cliente
     const usuario = await this.usersClientService.findOne(userId);
-
+  
     if (!usuario) {
       throw new UnauthorizedException('Usuario no encontrado');
     }
-
-    // El resto del código permanece igual
+  
     const code = Math.floor(1000 + Math.random() * 9000).toString();
-
+  
     const expiracion = new Date();
-    expiracion.setMinutes(expiracion.getMinutes() + 15);
-
+    expiracion.setMinutes(expiracion.getMinutes() + 5);
+  
+    // Calculamos la fecha de expiración TTL (5 minutos desde ahora)
+    const ttlExpiracion = new Date();
+    ttlExpiracion.setMinutes(ttlExpiracion.getMinutes() + 5);
+  
     const nuevoRegistro = new this.registrationCodeModel({
       usuario: userId,
       codigo: code,
       tipo,
       expiracion,
+      ttlExpiracion, // Campo dedicado para TTL
       usado: false
     });
-
+  
     await nuevoRegistro.save();
 
     try {
@@ -112,6 +116,7 @@ export class AuthService {
       
       if (result) {
         this.logger.log(`Código de verificación enviado al usuario ${userId} por Telegram`);
+        this.logger.log('Esquema RegistrationCode:', Object.keys(RegistrationCodeSchema.paths));
       } else {
         this.logger.warn(`No se pudo enviar el código por Telegram al usuario ${userId}. El usuario no tiene Telegram vinculado.`);
       }
