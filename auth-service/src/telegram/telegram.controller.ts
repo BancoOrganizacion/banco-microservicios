@@ -22,7 +22,8 @@ import {
     @Post('link')
     async generateTelegramLink(@Request() req) {
       try {
-        const userId = req.user.userId;
+        const userId = req.user.id_usuario;
+        console.log("request"+req);
         
         if (!userId) {
           throw new HttpException(
