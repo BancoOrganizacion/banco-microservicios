@@ -15,7 +15,18 @@ import { RegisterCodeDto } from 'shared-models';
 import { ValidateCodeDto } from 'shared-models';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { MessagePattern } from '@nestjs/microservices';
+import { 
+  ApiTags, 
+  ApiOperation, 
+  ApiResponse, 
+  ApiBody, 
+  ApiBearerAuth,
+  ApiUnauthorizedResponse,
+  ApiBadRequestResponse,
+  ApiCreatedResponse
+} from '@nestjs/swagger';
 
+@ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   private readonly logger = new Logger(AuthController.name);
@@ -24,6 +35,21 @@ export class AuthController {
     private readonly authService: AuthService,
   ) {}
 
+  @ApiOperation({ summary: 'Iniciar sesión de usuario' })
+  @ApiBody({ type: LoginDto })
+  @ApiCreatedResponse({ 
+    description: 'Login exitoso',
+    schema: {
+      type: 'object',
+      properties: {
+        access_token: {
+          type: 'string',
+          example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+        }
+      }
+    }
+  })
+  @ApiUnauthorizedResponse({ description: 'Credenciales inválidas' })
   @Post('login')
   async login(@Body() loginDto: LoginDto) {
     try {
@@ -34,11 +60,28 @@ export class AuthController {
     }
   }
 
+  @ApiOperation({ summary: 'Generar código de verificación' })
+  @ApiBody({ type: RegisterCodeDto })
+  @ApiBearerAuth('JWT-auth')
+  @ApiCreatedResponse({ 
+    description: 'Código generado exitosamente',
+    schema: {
+      type: 'object',
+      properties: {
+        code: {
+          type: 'string',
+          example: '1234'
+        }
+      }
+    }
+  })
+  @ApiUnauthorizedResponse({ description: 'No autorizado' })
+  @ApiBadRequestResponse({ description: 'Error al generar código' })
   @UseGuards(JwtAuthGuard)
   @Post('codigo/generar')
   async generateRegistrationCode(@Body() registerCodeDto: RegisterCodeDto, @Request() req) {
     try {
-      const userId = req.user?.id_usuario; // Cambiar userId por id_usuario
+      const userId = req.user?.id_usuario;
       
       if (!userId) {
         this.logger.error('ID de usuario no disponible en el token JWT');
@@ -59,6 +102,25 @@ export class AuthController {
     }
   }
     
+  @ApiOperation({ summary: 'Validar código de verificación' })
+  @ApiBody({ type: ValidateCodeDto })
+  @ApiCreatedResponse({ 
+    description: 'Resultado de la validación',
+    schema: {
+      type: 'object',
+      properties: {
+        valid: {
+          type: 'boolean',
+          example: true
+        },
+        message: {
+          type: 'string',
+          example: 'Código válido'
+        }
+      }
+    }
+  })
+  @ApiBadRequestResponse({ description: 'Error al validar código' })
   @Post('codigo/validar')
   async validateRegistrationCode(@Body() validateCodeDto: ValidateCodeDto) {
     try {
@@ -79,6 +141,7 @@ export class AuthController {
     }
   }
 
+  // Este método es para mensajes internos, no se expone en Swagger
   @MessagePattern('auth.generateTokenAfterRegistration')
   async generateTokenAfterRegistration(data: { username: string, userId: string, rolId: string }) {
     try {
