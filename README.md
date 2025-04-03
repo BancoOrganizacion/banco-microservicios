@@ -16,3 +16,11 @@ npm run build
 npm run start
 ```
 
+
+## Para ver documentacion con swagger
+Acceder a la documentación Swagger en:
+API Gateway: http://localhost:3000/api/docs
+Auth Service: http://localhost:3002/api/docs
+Users Service: http://localhost:3001/api/docs
+
+
