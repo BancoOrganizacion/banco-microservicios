@@ -1,21 +1,21 @@
 // auth-service/src/telegram/telegram.controller.ts
-import { 
-  Controller, 
-  Post, 
-  Body, 
-  HttpException, 
-  HttpStatus, 
-  UseGuards, 
+import {
+  Controller,
+  Post,
+  Body,
+  HttpException,
+  HttpStatus,
+  UseGuards,
   Request,
   Logger
 } from '@nestjs/common';
 import { TelegramService } from './telegram.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
-import { 
-  ApiTags, 
-  ApiOperation, 
-  ApiResponse, 
-  ApiBody, 
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
   ApiBearerAuth,
   ApiUnauthorizedResponse,
   ApiBadRequestResponse,
@@ -27,11 +27,11 @@ import {
 export class TelegramController {
   private readonly logger = new Logger(TelegramController.name);
 
-  constructor(private readonly telegramService: TelegramService) {}
+  constructor(private readonly telegramService: TelegramService) { }
 
   @ApiOperation({ summary: 'Generar enlace para vincular Telegram' })
   @ApiBearerAuth('JWT-auth')
-  @ApiCreatedResponse({ 
+  @ApiCreatedResponse({
     description: 'Enlace generado exitosamente',
     schema: {
       type: 'object',
@@ -58,17 +58,17 @@ export class TelegramController {
   async generateTelegramLink(@Request() req) {
     try {
       const userId = req.user.id_usuario;
-      
+
       if (!userId) {
         throw new HttpException(
-          'ID de usuario no disponible en el token JWT', 
+          'ID de usuario no disponible en el token JWT',
           HttpStatus.BAD_REQUEST
         );
       }
 
       const linkData = await this.telegramService.generateTelegramLinkToken(userId);
-      
-      return { 
+
+      return {
         success: true,
         token: linkData.token,
         deepLink: linkData.deepLink
@@ -76,14 +76,14 @@ export class TelegramController {
     } catch (error) {
       this.logger.error(`Error generating Telegram link: ${error.message}`);
       throw new HttpException(
-        error.message || 'Error al generar enlace de Telegram', 
+        error.message || 'Error al generar enlace de Telegram',
         HttpStatus.BAD_REQUEST
       );
     }
   }
 
-  @ApiOperation({ 
-    summary: 'Probar envío de mensajes Telegram', 
+  @ApiOperation({
+    summary: 'Probar envío de mensajes Telegram',
     description: 'Endpoint para pruebas de integración con Telegram'
   })
   @ApiBody({
@@ -101,7 +101,7 @@ export class TelegramController {
       }
     }
   })
-  @ApiCreatedResponse({ 
+  @ApiCreatedResponse({
     description: 'Mensaje enviado exitosamente',
     schema: {
       type: 'object',
@@ -122,13 +122,71 @@ export class TelegramController {
   async testTelegramMessage(@Body() data: { chatId: string, message: string }) {
     try {
       await this.telegramService.sendMessage(data.chatId, data.message);
-      return { 
+      return {
         success: true,
         message: 'Mensaje enviado con éxito'
       };
     } catch (error) {
       throw new HttpException(
-        error.message || 'Error al enviar mensaje por Telegram', 
+        error.message || 'Error al enviar mensaje por Telegram',
+        HttpStatus.BAD_REQUEST
+      );
+    }
+  }
+  @ApiOperation({ summary: 'Buscar chatId de Telegram por número de teléfono' })
+  @ApiBearerAuth('JWT-auth')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        telefono: {
+          type: 'string',
+          example: '+573001234567'
+        }
+      },
+      required: ['telefono']
+    }
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'ChatId encontrado exitosamente',
+    schema: {
+      type: 'object',
+      properties: {
+        success: {
+          type: 'boolean',
+          example: true
+        },
+        chatId: {
+          type: 'string',
+          example: '123456789',
+          nullable: true
+        }
+      }
+    }
+  })
+  @ApiUnauthorizedResponse({ description: 'No autorizado' })
+  @ApiBadRequestResponse({ description: 'Error en la búsqueda o parámetros inválidos' })
+  @Post('find-chat-id')
+  async findChatIdByPhone(@Body() data: { telefono: string }) {
+    try {
+      if (!data.telefono) {
+        throw new HttpException(
+          'El número de teléfono es requerido',
+          HttpStatus.BAD_REQUEST
+        );
+      }
+
+      const chatId = await this.telegramService.findChatIdByPhone(data.telefono);
+
+      return {
+        success: true,
+        chatId
+      };
+    } catch (error) {
+      this.logger.error(`Error finding chatId by phone: ${error.message}`);
+      throw new HttpException(
+        error.message || 'Error al buscar el chatId de Telegram',
         HttpStatus.BAD_REQUEST
       );
     }
