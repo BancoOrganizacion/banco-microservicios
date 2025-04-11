@@ -89,18 +89,18 @@ export class UsuariosService {
     return usuario;
   }
 
-  async update(id: string, updateUsuarioDto: UpdateUsuarioDto): Promise<Usuario> {
+  async update(id: string, updateUsuarioDto: UpdateUsuarioDto): Promise<{ mensaje: string }> {
     const usuarioActualizado = await this.usuarioModel
       .findByIdAndUpdate(id, updateUsuarioDto, { new: true })
-      .populate('rol')
       .exec();
-    
+  
     if (!usuarioActualizado) {
       throw new NotFoundException(`Usuario con ID ${id} no encontrado`);
     }
-    
-    return usuarioActualizado;
+  
+    return { mensaje: 'Usuario actualizado con éxito' };
   }
+  
 
   async updateRol(usuarioId: string, rolId: string): Promise<Usuario> {
     // Verificar si el rol existe

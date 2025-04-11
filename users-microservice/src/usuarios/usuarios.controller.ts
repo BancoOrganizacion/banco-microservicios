@@ -190,64 +190,22 @@ export class UsuariosController {
     return usuario;
   }
 
-  @ApiOperation({ summary: 'Actualizar usuario' })
-  @ApiParam({ name: 'id', description: 'ID del usuario', type: 'string' })
+  // Para actualizar un usario
+  @ApiOperation({ summary: 'Actualizar perfil propio' })
   @ApiBody({ type: UpdateUsuarioDto })
   @ApiBearerAuth('JWT-auth')
   @ApiOkResponse({ 
-    description: 'Usuario actualizado',
-    schema: {
-      type: 'object',
-      properties: {
-        _id: { type: 'string' },
-        nombre: { type: 'string' },
-        apellido: { type: 'string' },
-        cedula: { type: 'string' },
-        email: { type: 'string' },
-        telefono: { type: 'string' },
-        rol: { 
-          type: 'object',
-          properties: {
-            _id: { type: 'string' },
-            nombre: { type: 'string' }
-          }
-        },
-        activo: { type: 'boolean' }
-      }
-    }
+    description: 'Perfil actualizado'
   })
-  @ApiNotFoundResponse({ description: 'Usuario no encontrado' })
-  @ApiConflictResponse({ description: 'El correo electrónico ya está en uso' })
   @ApiUnauthorizedResponse({ description: 'No autorizado' })
-  @ApiForbiddenResponse({ description: 'No tienes permiso para actualizar este perfil' })
   @UseGuards(JwtDataGuard)
-  @Put(':id')
-  async update(@Param('id') id: string, @Body() updateUsuarioDto: UpdateUsuarioDto, @Request() req) {
-    try {
-      const userId = req.user.id_usuario;
-      const userRoleId = req.user.id_rol;
-      
-      // Si no es el propio usuario ni un administrador, denegar acceso
-      if (id !== userId && userRoleId !== 'ID_ROL_ADMIN') {
-        throw new HttpException('No tienes permiso para actualizar este perfil', HttpStatus.FORBIDDEN);
-      }
-      
-      const usuario = await this.usuariosService.update(id, updateUsuarioDto);
-      if (!usuario) {
-        throw new NotFoundException(`Usuario con ID ${id} no encontrado`);
-      }
-      return usuario;
-    } catch (error) {
-      if (error.code === 11000) {
-        throw new HttpException(
-          'El correo electrónico ya está en uso',
-          HttpStatus.CONFLICT
-        );
-      }
-      throw error;
-    }
+  @Put('perfil')
+  async updateProfile(@Body() updateUsuarioDto: UpdateUsuarioDto, @Request() req) {
+    const userId = req.user.id_usuario;
+    return this.usuariosService.update(userId, updateUsuarioDto);
   }
 
+  //////////////////
   @ApiOperation({ summary: 'Actualizar rol de usuario' })
   @ApiParam({ name: 'id', description: 'ID del usuario', type: 'string' })
   @ApiBody({ type: UpdateUsuarioRolDto })

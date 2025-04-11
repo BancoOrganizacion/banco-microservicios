@@ -173,6 +173,28 @@ export class ProxyController {
     return this.handleProxyRequest('users', req, res);
   }
 
+  // Endpoint para actualizar un usuario perfil
+  @ApiTags('users')
+  @ApiOperation({ summary: 'Actualizar usuario propio' })
+  @ApiBearerAuth('JWT-auth')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        nombre: { type: 'string', example: 'Juan' },
+        apellido: { type: 'string', example: 'Pérez' },
+        email: { type: 'string', example: 'juan.perez@example.com' },
+        telefono: { type: 'string', example: '0991234567' }
+      }
+    }
+  })
+  @ApiResponse({ status: 200, description: 'Usuario actualizado' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
+  @Put('users/usuarios/perfil')
+  async updateCurrentUser(@Req() req: Request, @Res() res: Response) {
+    return this.handleProxyRequest('users', req, res);
+  }
+
   @ApiTags('users')
   @ApiOperation({ summary: 'Actualizar rol de usuario' })
   @ApiParam({ name: 'id', type: 'string', description: 'ID del usuario' })
