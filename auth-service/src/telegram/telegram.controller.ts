@@ -191,4 +191,54 @@ export class TelegramController {
       );
     }
   }
+
+  @ApiOperation({ summary: 'Verificar si el usuario tiene un chat de Telegram vinculado' })
+  @ApiBearerAuth('JWT-auth')
+  @ApiCreatedResponse({
+    description: 'Resultado de la verificación',
+    schema: {
+      type: 'object',
+      properties: {
+        linked: {
+          type: 'boolean',
+          example: true
+        },
+        chatId: {
+          type: 'string',
+          example: '123456789',
+          nullable: true
+        }
+      }
+    }
+  })
+  @ApiUnauthorizedResponse({ description: 'No autorizado' })
+  @UseGuards(JwtAuthGuard)
+  @Post('check-chat')
+  async checkTelegramChatId(@Request() req) {
+    try {
+      const userId = req.user.id_usuario;
+
+      if (!userId) {
+        throw new HttpException(
+          'ID de usuario no disponible en el token JWT',
+          HttpStatus.BAD_REQUEST
+        );
+      }
+
+      const chatId = await this.telegramService.findChatIdByUserId(userId);
+
+      return {
+        linked: !!chatId,
+        chatId: chatId
+      };
+    } catch (error) {
+      this.logger.error(`Error checking Telegram chat: ${error.message}`);
+      throw new HttpException(
+        error.message || 'Error al verificar el chat de Telegram',
+        HttpStatus.BAD_REQUEST
+      );
+    }
+  }
+
+
 }
