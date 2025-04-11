@@ -150,7 +150,8 @@ export class ProxyController {
   }
 
   @ApiTags('users')
-  @ApiOperation({ summary: 'Actualizar usuario actual' })
+  @ApiOperation({ summary: 'Actualizar usuario' })
+  @ApiParam({ name: 'id', type: 'string', description: 'ID del usuario' })
   @ApiBearerAuth('JWT-auth')
   @ApiBody({
     schema: {
@@ -164,8 +165,10 @@ export class ProxyController {
     }
   })
   @ApiResponse({ status: 200, description: 'Usuario actualizado' })
+  @ApiResponse({ status: 404, description: 'Usuario no encontrado' })
   @ApiResponse({ status: 401, description: 'No autorizado' })
-  @Put('users/usuarios')
+  @ApiResponse({ status: 403, description: 'Acceso denegado' })
+  @Put('users/usuarios/:id')
   async updateUser(@Req() req: Request, @Res() res: Response) {
     return this.handleProxyRequest('users', req, res);
   }
