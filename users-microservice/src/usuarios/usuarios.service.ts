@@ -77,14 +77,6 @@ export class UsuariosService {
     }
   }
 
-  async getRoleById(roleId: string) {
-    try {
-      return await this.rolesService.findOne(roleId);
-    } catch (error) {
-      return null;
-    }
-  }
-
   async findAll(): Promise<Usuario[]> {
     return this.usuarioModel.find().populate('rol').exec();
   }

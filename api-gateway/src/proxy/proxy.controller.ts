@@ -165,12 +165,8 @@ export class ProxyController {
   })
   @ApiResponse({ status: 200, description: 'Usuario actualizado' })
   @ApiResponse({ status: 401, description: 'No autorizado' })
-  @ApiResponse({ status: 403, description: 'Acceso denegado' })
   @Put('users/usuarios')
-  async updateCurrentUser(@Req() req: Request, @Res() res: Response) {
-    this.logger.debug('Actualizando perfil del usuario actual');
-    // El path que se envía será "usuarios" y el ProxyService
-    // se encargará de modificarlo para usar el ID del token
+  async updateUser(@Req() req: Request, @Res() res: Response) {
     return this.handleProxyRequest('users', req, res);
   }
 
@@ -300,31 +296,5 @@ export class ProxyController {
         message: message 
       });
     }
-  }
-
-  // Este método maneja la actualización de un usuario específico por su ID
-  @ApiTags('users')
-  @ApiOperation({ summary: 'Actualizar usuario por ID' })
-  @ApiParam({ name: 'id', type: 'string', description: 'ID del usuario' })
-  @ApiBearerAuth('JWT-auth')
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        nombre: { type: 'string', example: 'Juan' },
-        apellido: { type: 'string', example: 'Pérez' },
-        email: { type: 'string', example: 'juan.perez@example.com' },
-        telefono: { type: 'string', example: '0991234567' }
-      }
-    }
-  })
-  @ApiResponse({ status: 200, description: 'Usuario actualizado' })
-  @ApiResponse({ status: 401, description: 'No autorizado' })
-  @ApiResponse({ status: 403, description: 'Acceso denegado' })
-  @ApiResponse({ status: 404, description: 'Usuario no encontrado' })
-  @Put('users/usuarios/:id')
-  async updateUserById(@Req() req: Request, @Res() res: Response) {
-    this.logger.debug(`Actualizando usuario específico por ID: ${req.params.id}`);
-    return this.handleProxyRequest('users', req, res);
   }
 }
