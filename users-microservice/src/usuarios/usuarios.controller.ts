@@ -20,7 +20,7 @@ import { UpdateUsuarioRolDto } from 'shared-models';
 import { MessagePattern } from '@nestjs/microservices';
 import { JwtDataGuard } from '../common/guards/jwt-data.guard';
 import { RoleGuard } from '../common/guards/role.guard';
-import { Roles } from '../common/decorators/roles.decorator';
+import { Roles, ROLE_ADMIN } from '../common/decorators/roles.decorator';
 import { 
   ApiTags, 
   ApiOperation, 
@@ -133,7 +133,7 @@ export class UsuariosController {
   @ApiUnauthorizedResponse({ description: 'No autorizado' })
   @ApiForbiddenResponse({ description: 'Acceso denegado' })
   @UseGuards(JwtDataGuard, RoleGuard)
-  @Roles('ID_ROL_ADMIN')
+  @Roles(ROLE_ADMIN)  // Cambiado de ID_ROL_ADMIN a ROLE_ADMIN
   @Get()
   async findAll() {
     this.logger.debug('Obteniendo lista de todos los usuarios');
@@ -177,8 +177,17 @@ export class UsuariosController {
     const userId = req.user.id_usuario;
     const userRoleId = req.user.id_rol;
     
+    let isAdmin = false;
+    try {
+      // Intentar obtener el rol desde el servicio
+      const userRole = await this.usuariosService.getRoleById(userRoleId);
+      isAdmin = userRole && userRole.nombre.toLowerCase() === 'admin';
+    } catch (error) {
+      this.logger.warn(`No se pudo verificar el rol: ${error.message}`);
+    }
+    
     // Si no es el propio usuario ni un administrador, denegar acceso
-    if (id !== userId && userRoleId !== 'ID_ROL_ADMIN') {
+    if (id !== userId && !isAdmin) {
       this.logger.warn(`Usuario ${userId} intentó acceder al perfil de ${id}`);
       throw new HttpException('No tienes permiso para ver este perfil', HttpStatus.FORBIDDEN);
     }
@@ -227,8 +236,23 @@ export class UsuariosController {
       const userId = req.user.id_usuario;
       const userRoleId = req.user.id_rol;
       
+      this.logger.debug(`Usuario ${userId} con rol ${userRoleId} intenta actualizar usuario ${id}`);
+      
+      // Verificar si es el mismo usuario o el administrador
+      let isAdmin = false;
+      
+      try {
+        // Intentar obtener el rol desde el servicio
+        const userRole = await this.usuariosService.getRoleById(userRoleId);
+        isAdmin = userRole && userRole.nombre.toLowerCase() === 'admin';
+        this.logger.debug(`Verificación de rol: ${userRole?.nombre} (${isAdmin ? 'es admin' : 'no es admin'})`);
+      } catch (error) {
+        this.logger.warn(`No se pudo verificar el rol: ${error.message}`);
+      }
+      
       // Si no es el propio usuario ni un administrador, denegar acceso
-      if (id !== userId && userRoleId !== 'ID_ROL_ADMIN') {
+      if (id !== userId && !isAdmin) {
+        this.logger.warn(`Usuario ${userId} no tiene permiso para actualizar el perfil de ${id}. Rol: ${userRoleId}`);
         throw new HttpException('No tienes permiso para actualizar este perfil', HttpStatus.FORBIDDEN);
       }
       
@@ -278,7 +302,7 @@ export class UsuariosController {
   @ApiUnauthorizedResponse({ description: 'No autorizado' })
   @ApiForbiddenResponse({ description: 'Acceso denegado' })
   @UseGuards(JwtDataGuard, RoleGuard)
-  @Roles('ID_ROL_ADMIN')
+  @Roles(ROLE_ADMIN)  // Cambiado de ID_ROL_ADMIN a ROLE_ADMIN
   @Put(':id/rol')
   async updateRol(@Param('id') id: string, @Body() updateRolDto: UpdateUsuarioRolDto) {
     const usuario = await this.usuariosService.updateRol(id, updateRolDto.rolId);

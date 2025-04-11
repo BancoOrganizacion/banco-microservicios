@@ -18,7 +18,7 @@ export class JwtDataMiddleware implements NestMiddleware {
         id_rol: roleId
       };
       
-      this.logger.debug(`Información del usuario extraída: ID=${userId}, Rol=${roleId}`);
+      this.logger.debug(`Información del usuario extraída de headers: ID=${userId}, Rol=${roleId}`);
     } else {
       // Si no tenemos los headers, podemos intentar extraerlos del JWT directamente
       // (esto sería un fallback en caso de que no estemos usando el API Gateway)
@@ -38,12 +38,21 @@ export class JwtDataMiddleware implements NestMiddleware {
               id_rol: decoded.id_rol
             };
             
-            this.logger.debug(`Información del usuario extraída del JWT`);
+            this.logger.debug(`Información del usuario extraída del JWT: ID=${decoded.id_usuario}, Rol=${decoded.id_rol}`);
+          } else {
+            this.logger.warn('El token JWT no contiene la información esperada (id_usuario, id_rol)');
           }
         } catch (error) {
           this.logger.error(`Error al decodificar el token: ${error.message}`);
         }
+      } else {
+        this.logger.debug('No se encontró información de usuario en headers ni token JWT');
       }
+    }
+
+    // Verificamos si la información del usuario se ha establecido correctamente
+    if (req['user']) {
+      this.logger.debug(`Usuario autenticado: ${JSON.stringify(req['user'])}`);
     }
 
     next();
