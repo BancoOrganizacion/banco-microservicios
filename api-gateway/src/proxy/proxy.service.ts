@@ -37,6 +37,17 @@ export class ProxyService {
       throw new HttpException(`Servicio ${service} no encontrado`, HttpStatus.NOT_FOUND);
     }
 
+     // Modificar la ruta para el endpoint de perfil propio
+    let actualPath = path;
+    if (service === 'users' && path === 'usuarios/perfil' && method === 'PUT') {
+      const tokenData = this.authService.extractTokenData(headers.authorization);
+      if (!tokenData || !tokenData.id_usuario) {
+        throw new HttpException('Token inválido o expirado', HttpStatus.UNAUTHORIZED);
+      }
+      // Reemplazar la ruta con la ID del usuario del token
+      actualPath = `usuarios/${tokenData.id_usuario}`;
+    }
+
     const fullUrl = `${serviceUrl}/${path}`;
     this.logger.debug(`Redirigiendo solicitud a: ${method} ${fullUrl}`);
 
