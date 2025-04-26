@@ -24,3 +24,9 @@ export * from './telegram/dto/generate-telegram-link.dto';
 export * from './telegram/dto/register-telegram.dto';
 export * from './telegram/schemas/telegram-chat.schema';
 export * from './telegram/schemas/telegram-token.schema';
+
+// Nuevos módulos de cuentas
+export * from './cuentas/schemas/cuenta.schema';
+export * from './cuentas/dto/create-restriccion.dto';
+export * from './cuentas/dto/update-cuenta.dto';
+export * from './cuentas/dto/create-cuenta.dto';
