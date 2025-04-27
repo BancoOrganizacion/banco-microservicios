@@ -56,18 +56,38 @@ export class CuentasController {
   @UseGuards(JwtDataGuard)
   @Post()
   async create(@Body() createCuentaDto: CreateCuentaDto, @Request() req) {
-    this.logger.debug(`Creando cuenta para usuario: ${createCuentaDto.titular}`);
+    try {
+      this.logger.debug(`Creando cuenta para usuario: ${createCuentaDto.titular}`);
 
-    // Si no se proporciona titular, usar el ID del usuario autenticado
-    if (!createCuentaDto.titular) {
-      createCuentaDto.titular = req.user.id_usuario;
-    }
-    // Si no es admin, solo puede crear cuentas para sí mismo
-    else if (req.user.id_rol !== 'ID_ROL_ADMIN' && createCuentaDto.titular !== req.user.id_usuario) {
-      throw new BadRequestException('No tienes permiso para crear cuentas para otros usuarios');
-    }
+      // Si no se proporciona titular, usar el ID del usuario autenticado
+      if (!createCuentaDto.titular) {
+        createCuentaDto.titular = req.user.id_usuario;
+      }
+      // Si no es admin, solo puede crear cuentas para sí mismo
+      else if (req.user.id_rol !== 'ID_ROL_ADMIN' && createCuentaDto.titular !== req.user.id_usuario) {
+        throw new BadRequestException('No tienes permiso para crear cuentas para otros usuarios');
+      }
 
-    return this.cuentasService.create(createCuentaDto);
+      const cuenta = await this.cuentasService.create(createCuentaDto);
+      return {
+        success: true,
+        message: 'Cuenta creada exitosamente',
+        cuenta: {
+          id: cuenta._id,
+          numero_cuenta: cuenta.numero_cuenta,
+          tipo_cuenta: cuenta.tipo_cuenta,
+          estado: cuenta.estado,
+          titular: cuenta.titular
+        }
+      };
+    } catch (error) {
+      this.logger.error(`Error al crear cuenta: ${error.message}`);
+      if (error instanceof NotFoundException || 
+          error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException('Error al crear la cuenta bancaria');
+    }
   }
 
   // Endpoint para obtener todas las cuentas (solo admin)

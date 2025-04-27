@@ -20,6 +20,7 @@ export class ProxyService {
     this.serviceUrls = {
       auth: configService.get('AUTH_SERVICE_URL', 'http://localhost:3002'),
       users: configService.get('USERS_SERVICE_URL', 'http://localhost:3001'),
+      accounts: configService.get('ACCOUNTS_SERVICE_URL', 'http://localhost:3003'),
     };
   }
 

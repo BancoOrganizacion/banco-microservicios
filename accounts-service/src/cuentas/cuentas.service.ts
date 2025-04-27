@@ -6,6 +6,7 @@ import { CreateCuentaDto } from 'shared-models';
 import { CreateRestriccionDto } from 'shared-models';
 import { UpdateCuentaDto } from 'shared-models';
 import { ClientProxy } from '@nestjs/microservices';
+import { firstValueFrom } from 'rxjs';
 
 @Injectable()
 export class CuentasService {
@@ -40,12 +41,14 @@ export class CuentasService {
   async create(createCuentaDto: CreateCuentaDto): Promise<Cuenta> {
     try {
       // Verificar si el usuario existe
-      const usuario = await this.usersClient.send('users.findOne', createCuentaDto.titular).toPromise();
+      const usuario = await firstValueFrom(
+        this.usersClient.send('users.findOne', createCuentaDto.titular)
+      );
       
       if (!usuario) {
         throw new NotFoundException(`Usuario con ID ${createCuentaDto.titular} no encontrado`);
       }
-
+  
       // Verificar si el usuario ya tiene 2 cuentas
       const cuentasUsuario = await this.cuentaModel.find({ 
         titular: createCuentaDto.titular,
@@ -55,10 +58,10 @@ export class CuentasService {
       if (cuentasUsuario.length >= 2) {
         throw new BadRequestException(`El usuario ya tiene el máximo de 2 cuentas permitidas`);
       }
-
+  
       // Generar número de cuenta único
       const numeroCuenta = await this.generarNumeroCuenta();
-
+  
       // Crear nueva cuenta
       const nuevaCuenta = new this.cuentaModel({
         ...createCuentaDto,
@@ -68,20 +71,31 @@ export class CuentasService {
         restricciones: [],
         movimientos: []
       });
-
+  
       // Guardar la cuenta
       const cuentaGuardada = await nuevaCuenta.save();
       
       // Agregar la cuenta al usuario en CuentaApp
-      await this.usersClient.send('users.addCuentaToUser', {
-        userId: createCuentaDto.titular,
-        cuentaId: cuentaGuardada._id
-      }).toPromise();
+      try {
+        await firstValueFrom(
+          this.usersClient.send('users.addCuentaToUser', {
+            userId: createCuentaDto.titular,
+            cuentaId: cuentaGuardada._id
+          })
+        );
+      } catch (error) {
+        this.logger.error(`Error al vincular cuenta con usuario: ${error.message}`);
+        // Considera si debes eliminar la cuenta creada si falla este paso
+      }
       
       return cuentaGuardada;
     } catch (error) {
       this.logger.error(`Error al crear cuenta: ${error.message}`);
-      throw error;
+      if (error instanceof NotFoundException || 
+          error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException(`Error al crear cuenta: ${error.message}`);
     }
   }
 
