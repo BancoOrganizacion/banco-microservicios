@@ -1,10 +1,10 @@
-import { 
-  Controller, 
+import {
+  Controller,
   Post,
-  Get, 
-  Body, 
-  HttpException, 
-  HttpStatus, 
+  Get,
+  Body,
+  HttpException,
+  HttpStatus,
   UseGuards,
   Request,
   Logger
@@ -13,13 +13,14 @@ import { AuthService } from './auth.service';
 import { LoginDto } from 'shared-models';
 import { RegisterCodeDto } from 'shared-models';
 import { ValidateCodeDto } from 'shared-models';
+import { GetUserByCodeDto } from 'shared-models';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { MessagePattern } from '@nestjs/microservices';
-import { 
-  ApiTags, 
-  ApiOperation, 
-  ApiResponse, 
-  ApiBody, 
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
   ApiBearerAuth,
   ApiUnauthorizedResponse,
   ApiBadRequestResponse,
@@ -33,11 +34,11 @@ export class AuthController {
 
   constructor(
     private readonly authService: AuthService,
-  ) {}
+  ) { }
 
   @ApiOperation({ summary: 'Iniciar sesión de usuario' })
   @ApiBody({ type: LoginDto })
-  @ApiCreatedResponse({ 
+  @ApiCreatedResponse({
     description: 'Login exitoso',
     schema: {
       type: 'object',
@@ -63,7 +64,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Generar código de verificación' })
   @ApiBody({ type: RegisterCodeDto })
   @ApiBearerAuth('JWT-auth')
-  @ApiCreatedResponse({ 
+  @ApiCreatedResponse({
     description: 'Código generado exitosamente',
     schema: {
       type: 'object',
@@ -82,11 +83,11 @@ export class AuthController {
   async generateRegistrationCode(@Body() registerCodeDto: RegisterCodeDto, @Request() req) {
     try {
       const userId = req.user?.id_usuario;
-      
+
       if (!userId) {
         this.logger.error('ID de usuario no disponible en el token JWT');
         throw new HttpException(
-          'ID de usuario no disponible en el token JWT', 
+          'ID de usuario no disponible en el token JWT',
           HttpStatus.BAD_REQUEST
         );
       }
@@ -96,15 +97,15 @@ export class AuthController {
     } catch (error) {
       this.logger.error(`Error al generar código: ${error.message}`);
       throw new HttpException(
-        error.message || 'Error al generar el código de registro', 
+        error.message || 'Error al generar el código de registro',
         HttpStatus.BAD_REQUEST
       );
     }
   }
-    
+
   @ApiOperation({ summary: 'Validar código de verificación' })
   @ApiBody({ type: ValidateCodeDto })
-  @ApiCreatedResponse({ 
+  @ApiCreatedResponse({
     description: 'Resultado de la validación',
     schema: {
       type: 'object',
@@ -128,14 +129,14 @@ export class AuthController {
         validateCodeDto.userId,
         validateCodeDto.code
       );
-      
-      return { 
+
+      return {
         valid: isValid,
         message: isValid ? 'Código válido' : 'Código inválido o expirado'
       };
     } catch (error) {
       throw new HttpException(
-        error.message || 'Error al validar el código', 
+        error.message || 'Error al validar el código',
         HttpStatus.BAD_REQUEST
       );
     }
@@ -153,6 +154,42 @@ export class AuthController {
     }
   }
 
-  
+  @ApiOperation({ summary: 'Obtener ID de usuario a partir de un código' })
+@ApiBody({ type: GetUserByCodeDto })
+@ApiCreatedResponse({ 
+  description: 'ID de usuario obtenido exitosamente',
+  schema: {
+    type: 'object',
+    properties: {
+      userId: {
+        type: 'string',
+        example: '60d5ecb74e4e8d1b5cbf2457'
+      }
+    }
+  }
+})
+@ApiBadRequestResponse({ description: 'Código inválido o expirado' })
+@Post('codigo/usuario')
+async getUserByCode(@Body() getUserByCodeDto: GetUserByCodeDto) {
+  try {
+    const userId = await this.authService.getUserIdFromCode(getUserByCodeDto.code);
+    
+    if (!userId) {
+      throw new HttpException(
+        'Código inválido o expirado', 
+        HttpStatus.BAD_REQUEST
+      );
+    }
+    
+    return { userId };
+  } catch (error) {
+    this.logger.error(`Error al obtener usuario por código: ${error.message}`);
+    throw new HttpException(
+      error.message || 'Error al procesar el código', 
+      HttpStatus.BAD_REQUEST
+    );
+  }
+}
+
 }
 
