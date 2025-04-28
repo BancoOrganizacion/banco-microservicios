@@ -26,6 +26,8 @@ import {
   ApiBadRequestResponse,
   ApiCreatedResponse
 } from '@nestjs/swagger';
+import { RoleGuard } from './guards/role.guard';
+import { Roles } from './common/decorators/roles.decorator';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -155,41 +157,46 @@ export class AuthController {
   }
 
   @ApiOperation({ summary: 'Obtener ID de usuario a partir de un código' })
-@ApiBody({ type: GetUserByCodeDto })
-@ApiCreatedResponse({ 
-  description: 'ID de usuario obtenido exitosamente',
-  schema: {
-    type: 'object',
-    properties: {
-      userId: {
-        type: 'string',
-        example: '60d5ecb74e4e8d1b5cbf2457'
+  @ApiBody({ type: GetUserByCodeDto })
+  @ApiCreatedResponse({ 
+    description: 'ID de usuario obtenido exitosamente',
+    schema: {
+      type: 'object',
+      properties: {
+        userId: {
+          type: 'string',
+          example: '60d5ecb74e4e8d1b5cbf2457'
+        }
       }
     }
-  }
-})
-@ApiBadRequestResponse({ description: 'Código inválido o expirado' })
-@Post('codigo/usuario')
-async getUserByCode(@Body() getUserByCodeDto: GetUserByCodeDto) {
-  try {
-    const userId = await this.authService.getUserIdFromCode(getUserByCodeDto.code);
-    
-    if (!userId) {
+  })
+  @ApiBadRequestResponse({ description: 'Código inválido o expirado' })
+  @ApiUnauthorizedResponse({ description: 'No autorizado' })
+  @ApiResponse({ status: 403, description: 'Acceso prohibido' })
+  @Post('codigo/usuario')
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard,RoleGuard)
+  @Roles('6807f1cb168fadf2ecd43c4d')
+  async getUserByCode(@Body() getUserByCodeDto: GetUserByCodeDto) {
+    try {
+      const userId = await this.authService.getUserIdFromCode(getUserByCodeDto.code);
+      
+      if (!userId) {
+        throw new HttpException(
+          'Código inválido o expirado', 
+          HttpStatus.BAD_REQUEST
+        );
+      }
+      
+      return { userId };
+    } catch (error) {
+      this.logger.error(`Error al obtener usuario por código: ${error.message}`);
       throw new HttpException(
-        'Código inválido o expirado', 
+        error.message || 'Error al procesar el código', 
         HttpStatus.BAD_REQUEST
       );
     }
-    
-    return { userId };
-  } catch (error) {
-    this.logger.error(`Error al obtener usuario por código: ${error.message}`);
-    throw new HttpException(
-      error.message || 'Error al procesar el código', 
-      HttpStatus.BAD_REQUEST
-    );
   }
-}
 
 }
 

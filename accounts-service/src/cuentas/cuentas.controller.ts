@@ -14,9 +14,9 @@ import {
 } from '@nestjs/common';
 import { MessagePattern } from '@nestjs/microservices';
 import { CuentasService } from './cuentas.service';
-import { CreateCuentaDto } from './dto/create-cuenta.dto';
-import { UpdateCuentaDto } from './dto/update-cuenta.dto';
-import { CreateRestriccionDto } from './dto/create-restriccion.dto';
+import { CreateCuentaDto } from 'shared-models';
+import { UpdateCuentaDto } from 'shared-models';
+import { CreateRestriccionDto } from 'shared-models';
 import { JwtDataGuard } from './guards/jwt-data.guard';
 
 import { RoleGuard } from './guards/role.guard';
