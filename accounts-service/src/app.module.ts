@@ -1,13 +1,28 @@
-import { Module } from '@nestjs/common';
+import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
+import { MongooseModule } from '@nestjs/mongoose';
+import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { AccountController } from './account/account.controller';
-import { AccountService } from './account/account.service';
-import { AccountModule } from './account/account.module';
+import { CuentasModule } from './cuentas/cuentas.module';
+import { JwtDataMiddleware } from './cuentas/common/middleware/jwt-data.middleware';
+
 
 @Module({
-  imports: [AccountModule],
-  controllers: [AppController, AccountController],
-  providers: [AppService, AccountService],
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
+    MongooseModule.forRoot(
+      process.env.DATABASE_URI || 'mongodb://admin:Banco123*@localhost:27018/bancodb?authSource=admin'
+    ),
+    CuentasModule,
+  ],
+  controllers: [AppController],
+  providers: [AppService],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    // Aplicar el middleware a todas las rutas
+    consumer.apply(JwtDataMiddleware).forRoutes('*');
+  }
+}

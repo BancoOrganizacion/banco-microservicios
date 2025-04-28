@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ConflictException, Inject } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, ObjectId } from 'mongoose';
 import { Usuario, CuentaApp, UpdateUsuarioDto } from 'shared-models';
 import { CreateUsuarioDto } from 'shared-models';
 import { RolesService } from '../roles/roles.service';
@@ -134,6 +134,28 @@ export class UsuariosService {
     })
     //console.log(usuario)
     return usuario
+  }
+
+  // Añadir una cuenta a un usuario
+  async addCuentaToUser(userId: string, cuentaId: ObjectId): Promise<any> {
+    const cuentaApp = await this.cuentaAppModel.findOne({ 
+      persona: userId 
+    });
+    
+    if (!cuentaApp) {
+      throw new NotFoundException(`Usuario con ID ${userId} no encontrado`);
+    }
+    
+    // Verificar si la cuenta ya está asociada al usuario
+    if (cuentaApp.cuentas.includes(cuentaId)) {
+      return { message: 'La cuenta ya está asociada a este usuario' };
+    }
+    
+    // Añadir la cuenta al arreglo
+    cuentaApp.cuentas.push(cuentaId);
+    await cuentaApp.save();
+    
+    return { message: 'Cuenta asociada correctamente' };
   }
   
 }

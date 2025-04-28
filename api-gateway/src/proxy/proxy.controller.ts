@@ -322,4 +322,9 @@ export class ProxyController {
       });
     }
   }
+
+  @All('accounts/*')
+  async proxyToAccounts(@Req() req: Request, @Res() res: Response) {
+    return this.handleProxyRequest('accounts', req, res);
+  }
 }

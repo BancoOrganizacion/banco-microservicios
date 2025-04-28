@@ -245,4 +245,9 @@ export class UsuariosController {
     }
     return usuario;
   }
+
+  @MessagePattern('users.addCuentaToUser')
+  async addCuentaToUser(data: { userId: string, cuentaId: any }) {
+    return this.usuariosService.addCuentaToUser(data.userId, data.cuentaId);
+  }
 }
