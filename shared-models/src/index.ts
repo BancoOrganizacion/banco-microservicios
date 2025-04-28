@@ -2,6 +2,7 @@ export * from './auth/schemas/registration-code.schema';
 export * from './auth/dto/login.dto';
 export * from './auth/dto/register-code.dto';
 export * from './auth/dto/validate-code.dto';
+export * from './auth/dto/get-user-by-code.dto';
 
 export * from './usuarios/schemas/usuario.schema';
 export * from './usuarios/dto/create-usuario.dto';

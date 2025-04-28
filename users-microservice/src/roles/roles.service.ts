@@ -18,6 +18,7 @@ export class RolesService {
     const defaultRoles = [
       { nombre: 'admin', descripcion: 'Administrador del sistema' },
       { nombre: 'usuario', descripcion: 'Usuario estándar' },
+      { nombre: 'vinculador',descripcion: 'dispositivo huellas'}
     ];
 
     for (const role of defaultRoles) {

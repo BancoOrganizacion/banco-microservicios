@@ -1,7 +1,7 @@
 import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, ObjectId } from 'mongoose';
 import * as bcrypt from 'bcrypt';
 import { RegistrationCode } from 'shared-models';
 import { UsersClientService } from '../users-client/users-client.service';
@@ -182,5 +182,24 @@ export class AuthService {
     
     this.logger.log(`Se eliminaron ${result.deletedCount} códigos expirados o usados`);
     return result.deletedCount;
+  }
+  async getUserIdFromCode(code: string): Promise<ObjectId | null> {
+    // Limpiar códigos expirados primero
+    await this.cleanupExpiredCodes();
+  
+    // Buscar el código activo más reciente
+    const registrationCode = await this.registrationCodeModel.findOne({
+      codigo: code,
+      usado: false,
+      expiracion: { $gt: new Date() }
+    }).sort({ createdAt: -1 });
+  
+    // Si no encontramos un código válido, retornar null
+    if (!registrationCode) {
+      return null;
+    }
+  
+    // Retornar el ID del usuario asociado al código
+    return registrationCode.usuario;
   }
 }
