@@ -37,7 +37,7 @@ export class ProxyService {
     if (!serviceUrl) {
       throw new HttpException(`Servicio ${service} no encontrado`, HttpStatus.NOT_FOUND);
     }
-
+  
     // Modificar la ruta para el endpoint de perfil propio
     let actualPath = path;
     if (service === 'users' && path === 'usuarios/perfil' && method === 'PUT') {
@@ -48,12 +48,19 @@ export class ProxyService {
       // Reemplazar la ruta con la ID del usuario del token
       actualPath = `usuarios/${tokenData.id_usuario}`;
     }
-
   
-
+    // Caso especial para crear cuenta: si no se proporciona titular, usar el ID del usuario actual
+    if (service === 'accounts' && path === 'cuentas' && method === 'POST') {
+      const tokenData = this.authService.extractTokenData(headers.authorization);
+      if (tokenData && tokenData.id_usuario && !body.titular) {
+        // Si no hay titular especificado, usar el ID del usuario actual
+        body.titular = tokenData.id_usuario;
+      }
+    }
+  
     const fullUrl = `${serviceUrl}/${path}`;
     this.logger.debug(`Redirigiendo solicitud a: ${method} ${fullUrl}`);
-
+  
     // Preparar configuración para la solicitud
     const requestConfig: AxiosRequestConfig = {
       url: fullUrl,
@@ -62,7 +69,7 @@ export class ProxyService {
       params: query,
       data: body,
     };
-
+  
     try {
       // Solo verificar el token si existe en los headers
       if (headers.authorization) {
@@ -71,7 +78,7 @@ export class ProxyService {
         if (!isValidToken) {
           throw new HttpException('Token inválido o expirado', HttpStatus.UNAUTHORIZED);
         }
-
+  
         // Extraer información del token para el microservicio
         const tokenData = this.authService.extractTokenData(headers.authorization);
         
@@ -82,7 +89,7 @@ export class ProxyService {
           requestConfig.headers['X-User-Role'] = tokenData.id_rol;
         }
       }
-
+  
       const response = await firstValueFrom(this.httpService.request(requestConfig));
       return {
         statusCode: response.status,
@@ -115,4 +122,6 @@ export class ProxyService {
     
     return result;
   }
+
+  
 }

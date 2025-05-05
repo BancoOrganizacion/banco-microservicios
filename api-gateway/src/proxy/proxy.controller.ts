@@ -327,4 +327,74 @@ export class ProxyController {
   async proxyToAccounts(@Req() req: Request, @Res() res: Response) {
     return this.handleProxyRequest('accounts', req, res);
   }
+
+  @ApiTags('accounts')
+  @ApiOperation({ summary: 'Crear una nueva cuenta bancaria' })
+  @ApiBearerAuth('JWT-auth')
+  @ApiBody({ 
+    schema: {
+      type: 'object',
+      properties: {
+        tipo_cuenta: { 
+          type: 'string', 
+          example: 'CORRIENTE',
+          enum: ['CORRIENTE', 'AHORROS']
+        }
+      }
+    }
+  })
+  @ApiResponse({ status: 201, description: 'Cuenta creada exitosamente' })
+  @ApiResponse({ status: 400, description: 'Datos inválidos o el usuario ya tiene 2 cuentas' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
+  @Post('accounts/cuentas')
+  async createCuenta(@Req() req: Request, @Res() res: Response) {
+    return this.handleProxyRequest('accounts', req, res);
+  }
+
+  @ApiTags('accounts')
+  @ApiOperation({ summary: 'Obtener mis cuentas bancarias' })
+  @ApiBearerAuth('JWT-auth')
+  @ApiResponse({ status: 200, description: 'Lista de cuentas del usuario' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
+  @Get('accounts/cuentas/mis-cuentas')
+  async getMisCuentas(@Req() req: Request, @Res() res: Response) {
+    return this.handleProxyRequest('accounts', req, res);
+  }
+
+  @ApiTags('accounts')
+  @ApiOperation({ summary: 'Obtener cuenta por número' })
+  @ApiParam({ name: 'numeroCuenta', description: 'Número de cuenta (10 dígitos)' })
+  @ApiBearerAuth('JWT-auth')
+  @ApiResponse({ status: 200, description: 'Cuenta encontrada' })
+  @ApiResponse({ status: 404, description: 'Cuenta no encontrada' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
+  @Get('accounts/cuentas/numero/:numeroCuenta')
+  async getCuentaPorNumero(@Req() req: Request, @Res() res: Response) {
+    return this.handleProxyRequest('accounts', req, res);
+  }
+
+  @ApiTags('accounts')
+  @ApiOperation({ summary: 'Cancelar una cuenta bancaria' })
+  @ApiParam({ name: 'id', description: 'ID de la cuenta' })
+  @ApiBearerAuth('JWT-auth')
+  @ApiResponse({ status: 200, description: 'Cuenta cancelada' })
+  @ApiResponse({ status: 404, description: 'Cuenta no encontrada' })
+  @ApiResponse({ status: 400, description: 'No se puede cancelar una cuenta con saldo positivo' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
+  @Delete('accounts/cuentas/:id')
+  async cancelarCuenta(@Req() req: Request, @Res() res: Response) {
+    return this.handleProxyRequest('accounts', req, res);
+  }
+
+  @ApiTags('accounts')
+  @ApiOperation({ summary: 'Obtener movimientos de una cuenta' })
+  @ApiParam({ name: 'id', description: 'ID de la cuenta' })
+  @ApiBearerAuth('JWT-auth')
+  @ApiResponse({ status: 200, description: 'Lista de movimientos' })
+  @ApiResponse({ status: 404, description: 'Cuenta no encontrada' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
+  @Get('accounts/cuentas/:id/movimientos')
+  async getMovimientosCuenta(@Req() req: Request, @Res() res: Response) {
+    return this.handleProxyRequest('accounts', req, res);
+  }
 }
