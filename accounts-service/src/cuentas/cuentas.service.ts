@@ -184,6 +184,11 @@ export class CuentasService {
     if (!cuenta) {
       throw new NotFoundException(`Cuenta con ID ${id} no encontrada`);
     }
+  
+    // Validar que monto_desde sea menor que monto_hasta
+    if (restriccion.monto_desde >= restriccion.monto_hasta) {
+      throw new BadRequestException('El monto inicial debe ser menor que el monto final');
+    }
     
     // Validar si el patrón de autenticación existe (si se proporciona)
     if (restriccion.patron_autenticacion) {
@@ -200,10 +205,13 @@ export class CuentasService {
       throw new BadRequestException(`Los rangos de monto se solapan con restricciones existentes`);
     }
     
-
-
-    // Añadir la restricción, verificar como hacer que se añada la restriccion. se necesita convertir
-    //cuenta.restricciones.push(restriccion);
+    // Modificamos esta parte para usar la forma correcta de agregar elementos a un documento de Mongoose
+    cuenta.restricciones.push({
+      monto_desde: restriccion.monto_desde,
+      monto_hasta: restriccion.monto_hasta,
+      patron_autenticacion: restriccion.patron_autenticacion
+    } as any); // Usamos 'as any' para evitar el error de TypeScript
+    
     return cuenta.save();
   }
 
@@ -288,5 +296,4 @@ export class CuentasService {
       throw error;
     }
   }
-  
 }

@@ -133,7 +133,34 @@ export class CuentasController {
     return this.cuentasService.findByUsuario(userId);
   }
 
- 
+  // Endpoint para añadir una restricción
+  @ApiOperation({ summary: 'Añadir una restricción a una cuenta' })
+  @ApiParam({ name: 'id', description: 'ID de la cuenta' })
+  @ApiBody({ type: CreateRestriccionDto })
+  @ApiOkResponse({ description: 'Restricción añadida' })
+  @ApiNotFoundResponse({ description: 'Cuenta no encontrada' })
+  @ApiBadRequestResponse({ description: 'Datos inválidos o rangos solapados' })
+  @ApiUnauthorizedResponse({ description: 'No autorizado' })
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtDataGuard)
+  @Post(':id/restricciones')
+  async addRestriccion(
+    @Param('id') id: string, 
+    @Body() restriccion: CreateRestriccionDto,
+    @Request() req
+  ) {
+    this.logger.debug(`Añadiendo restricción a cuenta: ${id}`);
+    const cuenta = await this.cuentasService.findOne(id);
+    
+    // Verificar que el usuario tenga acceso a esta cuenta
+    if (req.user.id_rol !== 'ID_ROL_ADMIN' &&
+      cuenta.titular.toString() !== req.user.id_usuario) {
+      throw new BadRequestException('No tienes permiso para modificar esta cuenta');
+    }
+
+    return this.cuentasService.addRestriccion(id, restriccion);
+  }
+
   // Endpoint para eliminar una restricción
   @ApiOperation({ summary: 'Eliminar una restricción de una cuenta' })
   @ApiParam({ name: 'id', description: 'ID de la cuenta' })
@@ -160,39 +187,6 @@ export class CuentasController {
 
     return this.cuentasService.removeRestriccion(id, restriccionId);
   }
-
-  // Endpoint para validar una operación
-  @ApiOperation({ summary: 'Validar si una operación requiere patrón de autenticación' })
-  @ApiParam({ name: 'id', description: 'ID de la cuenta' })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        monto: {
-          type: 'number',
-          example: 5000
-        }
-      }
-    }
-  })
-  @ApiOkResponse({
-    description: 'Resultado de la validación',
-    schema: {
-      type: 'object',
-      properties: {
-        requierePatron: {
-          type: 'boolean',
-          example: true
-        },
-        patronId: {
-          type: 'string',
-          example: '507f1f77bcf86cd799439011'
-        }
-      }
-    }
-  })
-
-
 
   // Endpoint para obtener movimientos de una cuenta
   @ApiOperation({ summary: 'Obtener movimientos de una cuenta' })
@@ -224,7 +218,6 @@ export class CuentasController {
     return { success: true };
   }
 
-
   // Endpoint para microservicios - Actualizar saldo
   @MessagePattern('accounts.actualizarSaldo')
   async actualizarSaldo(data: { cuentaId: string, monto: number }) {
@@ -243,7 +236,6 @@ export class CuentasController {
     this.logger.debug(`Microservicio: Buscando cuenta con número: ${numeroCuenta}`);
     return this.cuentasService.findByNumeroCuenta(numeroCuenta);
   }
-
 
   // Endpoint para obtener cuenta por número
   @ApiOperation({ summary: 'Obtener cuenta por número' })
@@ -306,30 +298,4 @@ export class CuentasController {
 
     return this.cuentasService.cancelarCuenta(id);
   }
-
 }
-
-
-
-/*
-// Endpoint para añadir una restricción
-@ApiOperation({ summary: 'Añadir una restricción a una cuenta' })
-@ApiParam({ name: 'id', description: 'ID de la cuenta' })
-@ApiBody({ type: CreateRestriccionDto })
-@ApiOkResponse({ description: 'Restricción añadida' })
-@ApiNotFoundResponse({ description: 'Cuenta no encontrada' })
-@ApiBadRequestResponse({ description: 'Datos inválidos o rangos solapados' })
-@ApiUnauthorizedResponse({ description: 'No autorizado' })
-@ApiBearerAuth('JWT-auth')
-@UseGuards(JwtDataGuard)
-@Post(':id/restricciones')
-async addRestriccion(
-  @Param('id') id: string, 
-  @Body() restriccion: CreateRestriccionDto,
-  @Request() req
-) {
-  this.logger.debug(`Añadiendo restricción a cuenta: ${id}`);
-  const cuenta = await this.cuentasService.findOne(id);
-  
-  // Verificar que el usuario tenga acceso a esta cuenta
-*/

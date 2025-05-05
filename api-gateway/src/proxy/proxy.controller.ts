@@ -397,4 +397,45 @@ export class ProxyController {
   async getMovimientosCuenta(@Req() req: Request, @Res() res: Response) {
     return this.handleProxyRequest('accounts', req, res);
   }
+  // Dentro de la clase ProxyController en proxy.controller.ts
+
+  @ApiTags('accounts')
+  @ApiOperation({ summary: 'Añadir una restricción a una cuenta' })
+  @ApiParam({ name: 'id', type: 'string', description: 'ID de la cuenta' })
+  @ApiBearerAuth('JWT-auth')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        monto_desde: { type: 'number', example: 0 },
+        monto_hasta: { type: 'number', example: 100 },
+        patron_autenticacion: { type: 'string', example: '60d5ecb74e4e8d1b5cbf2457', nullable: true }
+      },
+      required: ['monto_desde', 'monto_hasta']
+    }
+  })
+  @ApiResponse({ status: 200, description: 'Restricción añadida exitosamente' })
+  @ApiResponse({ status: 400, description: 'Datos inválidos o rangos solapados' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
+  @ApiResponse({ status: 403, description: 'Acceso denegado' })
+  @ApiResponse({ status: 404, description: 'Cuenta no encontrada' })
+  @Post('accounts/cuentas/:id/restricciones')
+  async addCuentaRestriccion(@Req() req: Request, @Res() res: Response) {
+    return this.handleProxyRequest('accounts', req, res);
+  }
+
+  // También deberías agregar el endpoint para eliminar restricciones
+  @ApiTags('accounts')
+  @ApiOperation({ summary: 'Eliminar una restricción de una cuenta' })
+  @ApiParam({ name: 'id', type: 'string', description: 'ID de la cuenta' })
+  @ApiParam({ name: 'restriccionId', type: 'string', description: 'ID de la restricción' })
+  @ApiBearerAuth('JWT-auth')
+  @ApiResponse({ status: 200, description: 'Restricción eliminada exitosamente' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
+  @ApiResponse({ status: 403, description: 'Acceso denegado' })
+  @ApiResponse({ status: 404, description: 'Cuenta o restricción no encontrada' })
+  @Delete('accounts/cuentas/:id/restricciones/:restriccionId')
+  async removeCuentaRestriccion(@Req() req: Request, @Res() res: Response) {
+    return this.handleProxyRequest('accounts', req, res);
+  }
 }
