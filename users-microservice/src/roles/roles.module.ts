@@ -6,12 +6,10 @@ import { Role, RoleSchema } from 'shared-models';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([
-      { name: Role.name, schema: RoleSchema }
-    ])
+    MongooseModule.forFeature([{ name: Role.name, schema: RoleSchema }]),
   ],
   controllers: [RolesController],
   providers: [RolesService],
-  exports: [RolesService]
+  exports: [RolesService],
 })
 export class RolesModule {}

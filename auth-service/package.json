@@ -32,6 +32,7 @@
     "@types/bcrypt": "^5.0.2",
     "amqp-connection-manager": "^4.1.14",
     "amqplib": "^0.10.5",
+    "auth-service": "file:",
     "axios": "^1.8.4",
     "bcrypt": "^5.1.1",
     "class": "^0.1.4",

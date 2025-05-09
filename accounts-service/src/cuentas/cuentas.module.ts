@@ -7,9 +7,7 @@ import { Cuenta, CuentaSchema } from 'shared-models';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([
-      { name: Cuenta.name, schema: CuentaSchema }
-    ]),
+    MongooseModule.forFeature([{ name: Cuenta.name, schema: CuentaSchema }]),
     ClientsModule.register([
       {
         name: 'USERS_SERVICE',
@@ -17,7 +15,7 @@ import { Cuenta, CuentaSchema } from 'shared-models';
         options: {
           host: process.env.REDIS_HOST || 'localhost',
           port: parseInt(process.env.REDIS_PORT) || 6379,
-        }
+        },
       },
       {
         name: 'AUTH_SERVICE',
@@ -25,12 +23,12 @@ import { Cuenta, CuentaSchema } from 'shared-models';
         options: {
           host: process.env.REDIS_HOST || 'localhost',
           port: parseInt(process.env.REDIS_PORT) || 6379,
-        }
-      }
-    ])
+        },
+      },
+    ]),
   ],
   controllers: [CuentasController],
   providers: [CuentasService],
-  exports: [CuentasService]
+  exports: [CuentasService],
 })
 export class CuentasModule {}

@@ -35,9 +35,12 @@ try {
     .forEach(([name, script]) => {
       console.log(`  * ${name}: ${script}`);
     });
-  
+
   console.log('- Dependencias de NestJS:');
-  const nestDeps = Object.entries({...pkg.dependencies, ...pkg.devDependencies})
+  const nestDeps = Object.entries({
+    ...pkg.dependencies,
+    ...pkg.devDependencies,
+  })
     .filter(([name]) => name.includes('@nestjs'))
     .forEach(([name, version]) => {
       console.log(`  * ${name}: ${version}`);
@@ -54,15 +57,15 @@ exec('npx tsc --project tsconfig.json', (error, stdout, stderr) => {
     console.error(stderr);
     return;
   }
-  
+
   console.log('Compilación completada. Verificando dist/main.js:');
   const mainJsExists = fs.existsSync('dist/main.js');
   console.log(`dist/main.js: ${mainJsExists ? 'Existe ✓' : 'No existe ✗'}`);
-  
+
   if (mainJsExists) {
     console.log('Contenido del directorio dist:');
     const distFiles = fs.readdirSync('dist');
-    distFiles.forEach(file => {
+    distFiles.forEach((file) => {
       console.log(` - ${file}`);
     });
   } else {
@@ -71,7 +74,7 @@ exec('npx tsc --project tsconfig.json', (error, stdout, stderr) => {
       const distFiles = fs.readdirSync('dist');
       if (distFiles.length > 0) {
         console.log('Archivos encontrados en dist:');
-        distFiles.forEach(file => {
+        distFiles.forEach((file) => {
           console.log(` - ${file}`);
         });
       } else {

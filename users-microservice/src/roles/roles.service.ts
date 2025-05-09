@@ -7,9 +7,7 @@ import { UpdateRoleDto } from 'shared-models';
 
 @Injectable()
 export class RolesService {
-  constructor(
-    @InjectModel(Role.name) private roleModel: Model<Role>
-  ) {
+  constructor(@InjectModel(Role.name) private roleModel: Model<Role>) {
     // Crear roles por defecto si no existen
     this.createDefaultRoles();
   }
@@ -18,11 +16,13 @@ export class RolesService {
     const defaultRoles = [
       { nombre: 'admin', descripcion: 'Administrador del sistema' },
       { nombre: 'usuario', descripcion: 'Usuario estándar' },
-      { nombre: 'vinculador',descripcion: 'dispositivo huellas'}
+      { nombre: 'vinculador', descripcion: 'dispositivo huellas' },
     ];
 
     for (const role of defaultRoles) {
-      const existingRole = await this.roleModel.findOne({ nombre: role.nombre }).exec();
+      const existingRole = await this.roleModel
+        .findOne({ nombre: role.nombre })
+        .exec();
       if (!existingRole) {
         await this.create(role);
       }
@@ -50,11 +50,11 @@ export class RolesService {
     const roleActualizado = await this.roleModel
       .findByIdAndUpdate(id, updateRoleDto, { new: true })
       .exec();
-    
+
     if (!roleActualizado) {
       throw new NotFoundException(`Rol con ID ${id} no encontrado`);
     }
-    
+
     return roleActualizado;
   }
 }

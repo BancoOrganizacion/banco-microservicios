@@ -8,7 +8,9 @@ import { JwtDataMiddleware } from './common/middleware/jwt-data.middleware';
 
 @Module({
   imports: [
-    MongooseModule.forRoot('mongodb://admin:Banco123*@localhost:27018/bancodb?authSource=admin'),
+    MongooseModule.forRoot(
+      'mongodb://admin:Banco123*@localhost:27018/bancodb?authSource=admin',
+    ),
     UsuariosModule,
     RolesModule,
   ],

@@ -12,10 +12,10 @@ export class TelegramChat extends Document {
   @Prop({ required: true })
   chatId: string;
 
-  @Prop({ 
-    type: MongooseSchema.Types.ObjectId, 
+  @Prop({
+    type: MongooseSchema.Types.ObjectId,
     ref: 'Usuario',
-    required: true
+    required: true,
   })
   usuario: MongooseSchema.Types.ObjectId;
 

@@ -6,10 +6,10 @@ import { Document, Schema as MongooseSchema } from 'mongoose';
   collection: 'telegram_tokens',
 })
 export class TelegramToken extends Document {
-  @Prop({ 
-    type: MongooseSchema.Types.ObjectId, 
+  @Prop({
+    type: MongooseSchema.Types.ObjectId,
     ref: 'Usuario',
-    required: true 
+    required: true,
   })
   usuario: MongooseSchema.Types.ObjectId;
 

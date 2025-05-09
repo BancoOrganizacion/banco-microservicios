@@ -35,7 +35,8 @@
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.1",
     "shared-models": "*",
-    "swagger-ui-express": "^5.0.1"
+    "swagger-ui-express": "^5.0.1",
+    "users-microservice": "file:"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",

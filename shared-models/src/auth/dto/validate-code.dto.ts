@@ -1,18 +1,18 @@
-import { IsString, IsNotEmpty, Length } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsString, IsNotEmpty, Length } from "class-validator";
+import { ApiProperty } from "@nestjs/swagger";
 
 export class ValidateCodeDto {
   @ApiProperty({
-    description: 'ID del usuario al que pertenece el código',
-    example: '6070f06d5c7b1a1a9c9b0b3a',
+    description: "ID del usuario al que pertenece el código",
+    example: "6070f06d5c7b1a1a9c9b0b3a",
   })
   @IsString()
   @IsNotEmpty()
   userId: string;
 
   @ApiProperty({
-    description: 'Código de verificación de 4 dígitos',
-    example: '1234',
+    description: "Código de verificación de 4 dígitos",
+    example: "1234",
     minLength: 4,
     maxLength: 4,
   })

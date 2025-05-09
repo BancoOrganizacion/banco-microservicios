@@ -1,21 +1,21 @@
-import { IsString, IsEnum, IsOptional } from 'class-validator';
-import { ApiPropertyOptional } from '@nestjs/swagger';
-import { EstadoCuenta } from '../schemas/cuenta.schema';
+import { IsString, IsEnum, IsOptional } from "class-validator";
+import { ApiPropertyOptional } from "@nestjs/swagger";
+import { EstadoCuenta } from "../schemas/cuenta.schema";
 
 export class UpdateCuentaDto {
   @ApiPropertyOptional({
-    description: 'Estado de la cuenta',
+    description: "Estado de la cuenta",
     enum: EstadoCuenta,
-    example: 'ACTIVA'
+    example: "ACTIVA",
   })
   @IsEnum(EstadoCuenta)
   @IsOptional()
   estado?: EstadoCuenta;
 
   @ApiPropertyOptional({
-    description: 'Tipo de cuenta (CORRIENTE, AHORROS)',
-    example: 'CORRIENTE',
-    enum: ['CORRIENTE', 'AHORROS']
+    description: "Tipo de cuenta (CORRIENTE, AHORROS)",
+    example: "CORRIENTE",
+    enum: ["CORRIENTE", "AHORROS"],
   })
   @IsString()
   @IsOptional()

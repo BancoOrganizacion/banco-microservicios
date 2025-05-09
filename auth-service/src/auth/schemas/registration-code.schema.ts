@@ -6,10 +6,10 @@ import { Document, Schema as MongooseSchema } from 'mongoose';
   collection: 'registration_codes',
 })
 export class RegistrationCode extends Document {
-  @Prop({ 
-    type: MongooseSchema.Types.ObjectId, 
+  @Prop({
+    type: MongooseSchema.Types.ObjectId,
     ref: 'Usuario',
-    required: true 
+    required: true,
   })
   usuario: MongooseSchema.Types.ObjectId;
 
@@ -26,4 +26,5 @@ export class RegistrationCode extends Document {
   usado: boolean;
 }
 
-export const RegistrationCodeSchema = SchemaFactory.createForClass(RegistrationCode);
+export const RegistrationCodeSchema =
+  SchemaFactory.createForClass(RegistrationCode);

@@ -1,28 +1,28 @@
 // users-microservice/src/roles/roles.controller.ts
-import { 
-  Controller, 
-  Get, 
-  Post, 
-  Body, 
-  Param, 
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
   Put,
-  HttpStatus, 
+  HttpStatus,
   HttpException,
-  NotFoundException
+  NotFoundException,
 } from '@nestjs/common';
 import { RolesService } from './roles.service';
 import { CreateRoleDto } from 'shared-models';
 import { UpdateRoleDto } from 'shared-models';
-import { 
-  ApiTags, 
-  ApiOperation, 
-  ApiResponse, 
-  ApiParam, 
-  ApiBody, 
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiBody,
   ApiCreatedResponse,
   ApiOkResponse,
   ApiNotFoundResponse,
-  ApiConflictResponse
+  ApiConflictResponse,
 } from '@nestjs/swagger';
 
 @ApiTags('roles')
@@ -32,7 +32,7 @@ export class RolesController {
 
   @ApiOperation({ summary: 'Crear un nuevo rol' })
   @ApiBody({ type: CreateRoleDto })
-  @ApiCreatedResponse({ 
+  @ApiCreatedResponse({
     description: 'Rol creado exitosamente',
     schema: {
       type: 'object',
@@ -42,9 +42,9 @@ export class RolesController {
         descripcion: { type: 'string', example: 'Administrador del sistema' },
         activo: { type: 'boolean', example: true },
         createdAt: { type: 'string', format: 'date-time' },
-        updatedAt: { type: 'string', format: 'date-time' }
-      }
-    }
+        updatedAt: { type: 'string', format: 'date-time' },
+      },
+    },
   })
   @ApiConflictResponse({ description: 'El rol con este nombre ya existe' })
   @Post()
@@ -55,7 +55,7 @@ export class RolesController {
       if (error.code === 11000) {
         throw new HttpException(
           'El rol con este nombre ya existe',
-          HttpStatus.CONFLICT
+          HttpStatus.CONFLICT,
         );
       }
       throw error;
@@ -63,7 +63,7 @@ export class RolesController {
   }
 
   @ApiOperation({ summary: 'Obtener todos los roles activos' })
-  @ApiOkResponse({ 
+  @ApiOkResponse({
     description: 'Lista de roles',
     schema: {
       type: 'array',
@@ -73,10 +73,10 @@ export class RolesController {
           _id: { type: 'string' },
           nombre: { type: 'string' },
           descripcion: { type: 'string' },
-          activo: { type: 'boolean' }
-        }
-      }
-    }
+          activo: { type: 'boolean' },
+        },
+      },
+    },
   })
   @Get()
   async findAll() {
@@ -85,7 +85,7 @@ export class RolesController {
 
   @ApiOperation({ summary: 'Obtener rol por ID' })
   @ApiParam({ name: 'id', description: 'ID del rol', type: 'string' })
-  @ApiOkResponse({ 
+  @ApiOkResponse({
     description: 'Rol encontrado',
     schema: {
       type: 'object',
@@ -93,9 +93,9 @@ export class RolesController {
         _id: { type: 'string' },
         nombre: { type: 'string' },
         descripcion: { type: 'string' },
-        activo: { type: 'boolean' }
-      }
-    }
+        activo: { type: 'boolean' },
+      },
+    },
   })
   @ApiNotFoundResponse({ description: 'Rol no encontrado' })
   @Get(':id')
@@ -110,7 +110,7 @@ export class RolesController {
   @ApiOperation({ summary: 'Actualizar rol' })
   @ApiParam({ name: 'id', description: 'ID del rol', type: 'string' })
   @ApiBody({ type: UpdateRoleDto })
-  @ApiOkResponse({ 
+  @ApiOkResponse({
     description: 'Rol actualizado',
     schema: {
       type: 'object',
@@ -118,9 +118,9 @@ export class RolesController {
         _id: { type: 'string' },
         nombre: { type: 'string' },
         descripcion: { type: 'string' },
-        activo: { type: 'boolean' }
-      }
-    }
+        activo: { type: 'boolean' },
+      },
+    },
   })
   @ApiNotFoundResponse({ description: 'Rol no encontrado' })
   @ApiConflictResponse({ description: 'El nombre del rol ya está en uso' })
@@ -136,7 +136,7 @@ export class RolesController {
       if (error.code === 11000) {
         throw new HttpException(
           'El nombre del rol ya está en uso',
-          HttpStatus.CONFLICT
+          HttpStatus.CONFLICT,
         );
       }
       throw error;

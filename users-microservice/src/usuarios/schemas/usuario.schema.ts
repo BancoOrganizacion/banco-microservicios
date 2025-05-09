@@ -22,10 +22,10 @@ export class Usuario extends Document {
   @Prop()
   telefono: string;
 
-  @Prop({ 
-    type: MongooseSchema.Types.ObjectId, 
+  @Prop({
+    type: MongooseSchema.Types.ObjectId,
     ref: 'Role',
-    required: true
+    required: true,
   })
   rol: Role;
 
@@ -46,12 +46,11 @@ export class CuentaApp extends Document {
   @Prop({ required: true })
   contraseña: string;
 
-  @Prop({ 
-    type: MongooseSchema.Types.ObjectId, 
+  @Prop({
+    type: MongooseSchema.Types.ObjectId,
     ref: 'Usuario',
-    required: true 
+    required: true,
   })
-  
   persona: Usuario;
 
   @Prop({ type: [MongooseSchema.Types.ObjectId], default: [] })

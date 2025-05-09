@@ -6,14 +6,14 @@ import { AppService } from './app.service';
 import { CuentasModule } from './cuentas/cuentas.module';
 import { JwtDataMiddleware } from './cuentas/common/middleware/jwt-data.middleware';
 
-
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
     MongooseModule.forRoot(
-      process.env.DATABASE_URI || 'mongodb://admin:Banco123*@localhost:27018/bancodb?authSource=admin'
+      process.env.DATABASE_URI ||
+        'mongodb://admin:Banco123*@localhost:27018/bancodb?authSource=admin',
     ),
     CuentasModule,
   ],

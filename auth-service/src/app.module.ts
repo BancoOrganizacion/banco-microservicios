@@ -11,9 +11,11 @@ import { ConfigModule } from '@nestjs/config';
     ConfigModule.forRoot({
       isGlobal: true, // Hace que las variables de entorno estén disponibles globalmente
     }),
-    MongooseModule.forRoot('mongodb://admin:Banco123*@localhost:27018/bancodb?authSource=admin'),
+    MongooseModule.forRoot(
+      'mongodb://admin:Banco123*@localhost:27018/bancodb?authSource=admin',
+    ),
     TelegramModule,
-    AuthModule
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],

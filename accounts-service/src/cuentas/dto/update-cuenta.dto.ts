@@ -6,7 +6,7 @@ export class UpdateCuentaDto {
   @ApiPropertyOptional({
     description: 'Estado de la cuenta',
     enum: EstadoCuenta,
-    example: 'ACTIVA'
+    example: 'ACTIVA',
   })
   @IsEnum(EstadoCuenta)
   @IsOptional()
@@ -15,7 +15,7 @@ export class UpdateCuentaDto {
   @ApiPropertyOptional({
     description: 'Tipo de cuenta (CORRIENTE, AHORROS)',
     example: 'CORRIENTE',
-    enum: ['CORRIENTE', 'AHORROS']
+    enum: ['CORRIENTE', 'AHORROS'],
   })
   @IsString()
   @IsOptional()

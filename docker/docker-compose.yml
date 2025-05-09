@@ -1,5 +1,5 @@
-version: '3.8'
- 
+version: "3.8"
+
 services:
   mongodb:
     build:
@@ -16,7 +16,7 @@ services:
     volumes:
       - mongodb_data:/data/db
       - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js
-      
+
   redis:
     image: redis:alpine
     container_name: redis
@@ -25,7 +25,7 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
- 
+
 volumes:
   mongodb_data:
     driver: local

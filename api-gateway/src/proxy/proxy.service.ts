@@ -20,7 +20,10 @@ export class ProxyService {
     this.serviceUrls = {
       auth: configService.get('AUTH_SERVICE_URL', 'http://localhost:3002'),
       users: configService.get('USERS_SERVICE_URL', 'http://localhost:3001'),
-      accounts: configService.get('ACCOUNTS_SERVICE_URL', 'http://localhost:3003'),
+      accounts: configService.get(
+        'ACCOUNTS_SERVICE_URL',
+        'http://localhost:3003',
+      ),
     };
   }
 
@@ -33,34 +36,44 @@ export class ProxyService {
     query: any,
   ): Promise<any> {
     const serviceUrl = this.serviceUrls[service];
-    
+
     if (!serviceUrl) {
-      throw new HttpException(`Servicio ${service} no encontrado`, HttpStatus.NOT_FOUND);
+      throw new HttpException(
+        `Servicio ${service} no encontrado`,
+        HttpStatus.NOT_FOUND,
+      );
     }
-  
+
     // Modificar la ruta para el endpoint de perfil propio
     let actualPath = path;
     if (service === 'users' && path === 'usuarios/perfil' && method === 'PUT') {
-      const tokenData = this.authService.extractTokenData(headers.authorization);
+      const tokenData = this.authService.extractTokenData(
+        headers.authorization,
+      );
       if (!tokenData || !tokenData.id_usuario) {
-        throw new HttpException('Token inválido o expirado', HttpStatus.UNAUTHORIZED);
+        throw new HttpException(
+          'Token inválido o expirado',
+          HttpStatus.UNAUTHORIZED,
+        );
       }
       // Reemplazar la ruta con la ID del usuario del token
       actualPath = `usuarios/${tokenData.id_usuario}`;
     }
-  
+
     // Caso especial para crear cuenta: si no se proporciona titular, usar el ID del usuario actual
     if (service === 'accounts' && path === 'cuentas' && method === 'POST') {
-      const tokenData = this.authService.extractTokenData(headers.authorization);
+      const tokenData = this.authService.extractTokenData(
+        headers.authorization,
+      );
       if (tokenData && tokenData.id_usuario && !body.titular) {
         // Si no hay titular especificado, usar el ID del usuario actual
         body.titular = tokenData.id_usuario;
       }
     }
-  
+
     const fullUrl = `${serviceUrl}/${path}`;
     this.logger.debug(`Redirigiendo solicitud a: ${method} ${fullUrl}`);
-  
+
     // Preparar configuración para la solicitud
     const requestConfig: AxiosRequestConfig = {
       url: fullUrl,
@@ -69,19 +82,26 @@ export class ProxyService {
       params: query,
       data: body,
     };
-  
+
     try {
       // Solo verificar el token si existe en los headers
       if (headers.authorization) {
         // Si el token es inválido, esto lanzará una excepción
-        const isValidToken = this.authService.verifyToken(headers.authorization);
+        const isValidToken = this.authService.verifyToken(
+          headers.authorization,
+        );
         if (!isValidToken) {
-          throw new HttpException('Token inválido o expirado', HttpStatus.UNAUTHORIZED);
+          throw new HttpException(
+            'Token inválido o expirado',
+            HttpStatus.UNAUTHORIZED,
+          );
         }
-  
+
         // Extraer información del token para el microservicio
-        const tokenData = this.authService.extractTokenData(headers.authorization);
-        
+        const tokenData = this.authService.extractTokenData(
+          headers.authorization,
+        );
+
         // Agregar información del usuario en los headers para los microservicios
         if (tokenData) {
           requestConfig.headers = requestConfig.headers || {};
@@ -89,21 +109,23 @@ export class ProxyService {
           requestConfig.headers['X-User-Role'] = tokenData.id_rol;
         }
       }
-  
-      const response = await firstValueFrom(this.httpService.request(requestConfig));
+
+      const response = await firstValueFrom(
+        this.httpService.request(requestConfig),
+      );
       return {
         statusCode: response.status,
         data: response.data,
       };
     } catch (error) {
       this.logger.error(`Error al redirigir solicitud: ${error.message}`);
-      
+
       // Manejar errores de los microservicios
       if (error.response) {
         const { status, data } = error.response;
         throw new HttpException(data, status);
       }
-      
+
       throw new HttpException(
         'Error al comunicarse con el microservicio',
         HttpStatus.BAD_GATEWAY,
@@ -114,14 +136,12 @@ export class ProxyService {
   private prepareHeaders(headers: any): any {
     // Copiar headers relevantes, excluir host, connection, etc.
     const result = { ...headers };
-    
+
     // Eliminar headers específicos que no se deben reenviar
     delete result.host;
     delete result.connection;
     delete result['content-length'];
-    
+
     return result;
   }
-
-  
 }
