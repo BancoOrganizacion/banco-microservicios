@@ -4,7 +4,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 export class CreateRestriccionDto {
   @ApiProperty({
     description: 'Monto mínimo para aplicar esta restricción',
-    example: 100,
+    example: 100
   })
   @IsNumber()
   @Min(0)
@@ -12,7 +12,7 @@ export class CreateRestriccionDto {
 
   @ApiProperty({
     description: 'Monto máximo para aplicar esta restricción',
-    example: 1000,
+    example: 1000
   })
   @IsNumber()
   @Min(0)
@@ -20,7 +20,7 @@ export class CreateRestriccionDto {
 
   @ApiPropertyOptional({
     description: 'ID del patrón de autenticación a utilizar',
-    example: '507f1f77bcf86cd799439011',
+    example: '507f1f77bcf86cd799439011'
   })
   @IsMongoId()
   @IsOptional()

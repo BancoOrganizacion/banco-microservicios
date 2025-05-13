@@ -1,10 +1,10 @@
-import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { Document, Schema as MongooseSchema } from "mongoose";
-import { Role } from "../../roles/schemas/role.schema";
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { Document, Schema as MongooseSchema } from 'mongoose';
+import { Role } from '../../roles/schemas/role.schema';
 
 @Schema({
   timestamps: true,
-  collection: "personas",
+  collection: 'personas',
 })
 export class Usuario extends Document {
   @Prop({ required: true })
@@ -22,10 +22,10 @@ export class Usuario extends Document {
   @Prop()
   telefono: string;
 
-  @Prop({
-    type: MongooseSchema.Types.ObjectId,
-    ref: "Role",
-    required: true,
+  @Prop({ 
+    type: MongooseSchema.Types.ObjectId, 
+    ref: 'Role',
+    required: true
   })
   rol: Role;
 
@@ -37,7 +37,7 @@ export const UsuarioSchema = SchemaFactory.createForClass(Usuario);
 
 @Schema({
   timestamps: true,
-  collection: "cuentas_app",
+  collection: 'cuentas_app',
 })
 export class CuentaApp extends Document {
   @Prop({ required: true, unique: true })
@@ -46,11 +46,12 @@ export class CuentaApp extends Document {
   @Prop({ required: true })
   contraseña: string;
 
-  @Prop({
-    type: MongooseSchema.Types.ObjectId,
-    ref: "Usuario",
-    required: true,
+  @Prop({ 
+    type: MongooseSchema.Types.ObjectId, 
+    ref: 'Usuario',
+    required: true 
   })
+  
   persona: Usuario;
 
   @Prop({ type: [MongooseSchema.Types.ObjectId], default: [] })

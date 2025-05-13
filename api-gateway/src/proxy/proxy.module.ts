@@ -7,7 +7,11 @@ import { ProxyController } from './proxy.controller';
 import { ProxyService } from './proxy.service';
 
 @Module({
-  imports: [HttpModule, ConfigModule, AuthModule],
+  imports: [
+    HttpModule,
+    ConfigModule,
+    AuthModule,
+  ],
   controllers: [ProxyController],
   providers: [ProxyService],
 })

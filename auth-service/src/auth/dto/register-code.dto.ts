@@ -5,7 +5,7 @@ export class RegisterCodeDto {
   @ApiProperty({
     description: 'Tipo de código a generar (login, transaction, etc.)',
     example: 'login',
-    enum: ['login', 'transaction', 'register'],
+    enum: ['login', 'transaction', 'register']
   })
   @IsString()
   @IsNotEmpty()

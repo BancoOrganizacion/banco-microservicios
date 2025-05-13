@@ -1,15 +1,15 @@
-import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { Document, Schema as MongooseSchema } from "mongoose";
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { Document, Schema as MongooseSchema } from 'mongoose';
 
 @Schema({
   timestamps: true,
-  collection: "registration_codes",
+  collection: 'registration_codes',
 })
 export class RegistrationCode extends Document {
-  @Prop({
-    type: MongooseSchema.Types.ObjectId,
-    ref: "Usuario",
-    required: true,
+  @Prop({ 
+    type: MongooseSchema.Types.ObjectId, 
+    ref: 'Usuario',
+    required: true 
   })
   usuario: MongooseSchema.Types.ObjectId;
 
@@ -26,5 +26,4 @@ export class RegistrationCode extends Document {
   usado: boolean;
 }
 
-export const RegistrationCodeSchema =
-  SchemaFactory.createForClass(RegistrationCode);
+export const RegistrationCodeSchema = SchemaFactory.createForClass(RegistrationCode);

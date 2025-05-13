@@ -1,4 +1,4 @@
-import { IsMongoId, IsNotEmpty } from "class-validator";
+import { IsMongoId, IsNotEmpty } from 'class-validator';
 
 export class GenerateTelegramLinkDto {
   @IsMongoId()

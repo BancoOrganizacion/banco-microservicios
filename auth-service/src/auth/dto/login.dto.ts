@@ -7,11 +7,11 @@ export class LoginDto {
     description: 'Nombre de usuario para iniciar sesión',
     example: 'john_doe',
   })
+
   @IsString()
   @IsNotEmpty()
   @IsValidName({
-    message:
-      'El nombre solo puede contener letras, espacios, guiones bajos (_) y guiones medios (-)',
+    message: 'El nombre solo puede contener letras, espacios, guiones bajos (_) y guiones medios (-)'
   })
   username: string;
 
@@ -19,6 +19,7 @@ export class LoginDto {
     description: 'Contraseña del usuario',
     example: 'MySecurePass1!',
   })
+
   @IsString()
   @IsNotEmpty()
   password: string;

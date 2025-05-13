@@ -17,19 +17,17 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: any) {
-    this.logger.debug(
-      `Validando token en API Gateway: ${JSON.stringify(payload)}`,
-    );
-
+    this.logger.debug(`Validando token en API Gateway: ${JSON.stringify(payload)}`);
+    
     // Solo verificamos que el payload tenga los campos necesarios
     if (!payload.id_usuario || !payload.id_rol) {
       return false;
     }
-
+    
     // Devolvemos el payload para que esté disponible en el Request
-    return {
+    return { 
       id_usuario: payload.id_usuario,
-      id_rol: payload.id_rol,
+      id_rol: payload.id_rol
     };
   }
 }

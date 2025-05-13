@@ -6,7 +6,7 @@ export enum EstadoCuenta {
   ACTIVA = 'ACTIVA',
   BLOQUEADA = 'BLOQUEADA',
   INACTIVA = 'INACTIVA',
-  CANCELADA = 'CANCELADA',
+  CANCELADA = 'CANCELADA'
 }
 
 @Schema({
@@ -20,10 +20,10 @@ export class Restriccion extends Document {
   @Prop({ required: true })
   monto_hasta: number;
 
-  @Prop({
-    type: MongooseSchema.Types.ObjectId,
+  @Prop({ 
+    type: MongooseSchema.Types.ObjectId, 
     ref: 'PatronAutenticacion',
-    required: false,
+    required: false 
   })
   patron_autenticacion: MongooseSchema.Types.ObjectId;
 }
@@ -41,26 +41,23 @@ export class Cuenta extends Document {
   @Prop({ required: true, default: 0 })
   monto_actual: number;
 
-  @Prop({
-    type: MongooseSchema.Types.ObjectId,
+  @Prop({ 
+    type: MongooseSchema.Types.ObjectId, 
     ref: 'Usuario',
-    required: true,
+    required: true 
   })
   titular: Usuario;
 
-  @Prop({
-    type: [{ type: MongooseSchema.Types.ObjectId, ref: 'Movimiento' }],
-    default: [],
-  })
+  @Prop({ type: [{ type: MongooseSchema.Types.ObjectId, ref: 'Movimiento' }], default: [] })
   movimientos: MongooseSchema.Types.ObjectId[];
 
   @Prop({ type: [RestriccionSchema], default: [] })
   restricciones: Restriccion[];
 
-  @Prop({
-    type: String,
+  @Prop({ 
+    type: String, 
     enum: EstadoCuenta,
-    default: EstadoCuenta.ACTIVA,
+    default: EstadoCuenta.ACTIVA 
   })
   estado: EstadoCuenta;
 

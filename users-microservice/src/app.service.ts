@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class AppService {
+  
   getStatus() {
     return {
       status: 'online',
@@ -9,6 +10,7 @@ export class AppService {
       timestamp: new Date().toISOString(),
     };
   }
+
 
   getChao(): string {
     return 'BAY!';

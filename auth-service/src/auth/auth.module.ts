@@ -19,11 +19,8 @@ import { jwtConstants } from '../config/jwt.config';
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET', jwtConstants.secret),
-        signOptions: {
-          expiresIn: configService.get<string>(
-            'JWT_EXPIRES_IN',
-            jwtConstants.expiresIn,
-          ),
+        signOptions: { 
+          expiresIn: configService.get<string>('JWT_EXPIRES_IN', jwtConstants.expiresIn),
           algorithm: configService.get<string>('JWT_ALGORITHM', 'HS256') as any,
         },
       }),

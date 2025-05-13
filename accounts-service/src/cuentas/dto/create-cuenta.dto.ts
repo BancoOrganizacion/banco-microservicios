@@ -1,16 +1,10 @@
-import {
-  IsString,
-  IsNotEmpty,
-  IsOptional,
-  IsMongoId,
-  IsEnum,
-} from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsMongoId, IsEnum } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateCuentaDto {
   @ApiProperty({
     description: 'ID del titular de la cuenta (usuario)',
-    example: '507f1f77bcf86cd799439011',
+    example: '507f1f77bcf86cd799439011'
   })
   @IsMongoId()
   @IsNotEmpty()
@@ -19,7 +13,7 @@ export class CreateCuentaDto {
   @ApiPropertyOptional({
     description: 'Tipo de cuenta (CORRIENTE, AHORROS)',
     example: 'CORRIENTE',
-    enum: ['CORRIENTE', 'AHORROS'],
+    enum: ['CORRIENTE', 'AHORROS']
   })
   @IsString()
   @IsOptional()

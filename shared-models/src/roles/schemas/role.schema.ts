@@ -1,9 +1,9 @@
-import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { Document } from "mongoose";
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { Document } from 'mongoose';
 
 @Schema({
   timestamps: true,
-  collection: "roles",
+  collection: 'roles',
 })
 export class Role extends Document {
   @Prop({ required: true, unique: true })

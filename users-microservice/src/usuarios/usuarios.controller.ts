@@ -1,17 +1,17 @@
 // users-microservice/src/usuarios/usuarios.controller.ts
-import {
-  Controller,
-  Get,
-  Post,
-  Put,
-  Body,
-  Param,
-  HttpStatus,
+import { 
+  Controller, 
+  Get, 
+  Post, 
+  Put, 
+  Body, 
+  Param, 
+  HttpStatus, 
   HttpException,
   NotFoundException,
   UseGuards,
   Request,
-  Logger,
+  Logger
 } from '@nestjs/common';
 import { UsuariosService } from './usuarios.service';
 import { CreateUsuarioDto } from 'shared-models';
@@ -21,19 +21,19 @@ import { MessagePattern } from '@nestjs/microservices';
 import { JwtDataGuard } from '../common/guards/jwt-data.guard';
 import { RoleGuard } from '../common/guards/role.guard';
 import { Roles } from '../common/decorators/roles.decorator';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiParam,
-  ApiBody,
+import { 
+  ApiTags, 
+  ApiOperation, 
+  ApiResponse, 
+  ApiParam, 
+  ApiBody, 
   ApiBearerAuth,
   ApiCreatedResponse,
   ApiOkResponse,
   ApiNotFoundResponse,
   ApiConflictResponse,
   ApiForbiddenResponse,
-  ApiUnauthorizedResponse,
+  ApiUnauthorizedResponse
 } from '@nestjs/swagger';
 
 @ApiTags('usuarios')
@@ -56,7 +56,7 @@ export class UsuariosController {
 
   @ApiOperation({ summary: 'Crear un nuevo usuario' })
   @ApiBody({ type: CreateUsuarioDto })
-  @ApiCreatedResponse({
+  @ApiCreatedResponse({ 
     description: 'Usuario creado exitosamente',
     schema: {
       type: 'object',
@@ -70,26 +70,24 @@ export class UsuariosController {
             cedula: { type: 'string' },
             email: { type: 'string' },
             telefono: { type: 'string' },
-            rol: {
+            rol: { 
               type: 'object',
               properties: {
                 _id: { type: 'string' },
-                nombre: { type: 'string' },
-              },
+                nombre: { type: 'string' }
+              }
             },
-            activo: { type: 'boolean' },
-          },
+            activo: { type: 'boolean' }
+          }
         },
-        token: {
+        token: { 
           type: 'string',
-          example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-        },
-      },
-    },
+          example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+        }
+      }
+    }
   })
-  @ApiConflictResponse({
-    description: 'El usuario con esta cédula o correo electrónico ya existe',
-  })
+  @ApiConflictResponse({ description: 'El usuario con esta cédula o correo electrónico ya existe' })
   @Post()
   async create(@Body() createUsuarioDto: CreateUsuarioDto) {
     try {
@@ -98,7 +96,7 @@ export class UsuariosController {
       if (error.code === 11000) {
         throw new HttpException(
           'El usuario con esta cédula o correo electrónico ya existe',
-          HttpStatus.CONFLICT,
+          HttpStatus.CONFLICT
         );
       }
       throw error;
@@ -107,7 +105,7 @@ export class UsuariosController {
 
   @ApiOperation({ summary: 'Obtener todos los usuarios' })
   @ApiBearerAuth('JWT-auth')
-  @ApiOkResponse({
+  @ApiOkResponse({ 
     description: 'Lista de usuarios',
     schema: {
       type: 'array',
@@ -120,17 +118,17 @@ export class UsuariosController {
           cedula: { type: 'string' },
           email: { type: 'string' },
           telefono: { type: 'string' },
-          rol: {
+          rol: { 
             type: 'object',
             properties: {
               _id: { type: 'string' },
-              nombre: { type: 'string' },
-            },
+              nombre: { type: 'string' }
+            }
           },
-          activo: { type: 'boolean' },
-        },
-      },
-    },
+          activo: { type: 'boolean' }
+        }
+      }
+    }
   })
   @ApiUnauthorizedResponse({ description: 'No autorizado' })
   @ApiForbiddenResponse({ description: 'Acceso denegado' })
@@ -145,7 +143,7 @@ export class UsuariosController {
   @ApiOperation({ summary: 'Obtener usuario por ID' })
   @ApiParam({ name: 'id', description: 'ID del usuario', type: 'string' })
   @ApiBearerAuth('JWT-auth')
-  @ApiOkResponse({
+  @ApiOkResponse({ 
     description: 'Usuario encontrado',
     schema: {
       type: 'object',
@@ -156,40 +154,35 @@ export class UsuariosController {
         cedula: { type: 'string' },
         email: { type: 'string' },
         telefono: { type: 'string' },
-        rol: {
+        rol: { 
           type: 'object',
           properties: {
             _id: { type: 'string' },
-            nombre: { type: 'string' },
-          },
+            nombre: { type: 'string' }
+          }
         },
-        activo: { type: 'boolean' },
-      },
-    },
+        activo: { type: 'boolean' }
+      }
+    }
   })
   @ApiNotFoundResponse({ description: 'Usuario no encontrado' })
   @ApiUnauthorizedResponse({ description: 'No autorizado' })
-  @ApiForbiddenResponse({
-    description: 'No tienes permiso para ver este perfil',
-  })
+  @ApiForbiddenResponse({ description: 'No tienes permiso para ver este perfil' })
   @UseGuards(JwtDataGuard)
   @Get(':id')
   async findOne(@Param('id') id: string, @Request() req) {
     this.logger.debug(`Solicitando información del usuario ${id}`);
-
+    
     // Verificar si el usuario está solicitando su propio perfil o es admin
     const userId = req.user.id_usuario;
     const userRoleId = req.user.id_rol;
-
+    
     // Si no es el propio usuario ni un administrador, denegar acceso
     if (id !== userId && userRoleId !== 'ID_ROL_ADMIN') {
       this.logger.warn(`Usuario ${userId} intentó acceder al perfil de ${id}`);
-      throw new HttpException(
-        'No tienes permiso para ver este perfil',
-        HttpStatus.FORBIDDEN,
-      );
+      throw new HttpException('No tienes permiso para ver este perfil', HttpStatus.FORBIDDEN);
     }
-
+    
     const usuario = await this.usuariosService.findOne(id);
     if (!usuario) {
       throw new NotFoundException(`Usuario con ID ${id} no encontrado`);
@@ -201,16 +194,13 @@ export class UsuariosController {
   @ApiOperation({ summary: 'Actualizar perfil propio' })
   @ApiBody({ type: UpdateUsuarioDto })
   @ApiBearerAuth('JWT-auth')
-  @ApiOkResponse({
-    description: 'Perfil actualizado',
+  @ApiOkResponse({ 
+    description: 'Perfil actualizado'
   })
   @ApiUnauthorizedResponse({ description: 'No autorizado' })
   @UseGuards(JwtDataGuard)
   @Put('perfil')
-  async updateProfile(
-    @Body() updateUsuarioDto: UpdateUsuarioDto,
-    @Request() req,
-  ) {
+  async updateProfile(@Body() updateUsuarioDto: UpdateUsuarioDto, @Request() req) {
     const userId = req.user.id_usuario;
     return this.usuariosService.update(userId, updateUsuarioDto);
   }
@@ -220,7 +210,7 @@ export class UsuariosController {
   @ApiParam({ name: 'id', description: 'ID del usuario', type: 'string' })
   @ApiBody({ type: UpdateUsuarioRolDto })
   @ApiBearerAuth('JWT-auth')
-  @ApiOkResponse({
+  @ApiOkResponse({ 
     description: 'Rol de usuario actualizado',
     schema: {
       type: 'object',
@@ -231,16 +221,16 @@ export class UsuariosController {
         cedula: { type: 'string' },
         email: { type: 'string' },
         telefono: { type: 'string' },
-        rol: {
+        rol: { 
           type: 'object',
           properties: {
             _id: { type: 'string' },
-            nombre: { type: 'string' },
-          },
+            nombre: { type: 'string' }
+          }
         },
-        activo: { type: 'boolean' },
-      },
-    },
+        activo: { type: 'boolean' }
+      }
+    }
   })
   @ApiNotFoundResponse({ description: 'Usuario no encontrado o rol inválido' })
   @ApiUnauthorizedResponse({ description: 'No autorizado' })
@@ -248,24 +238,16 @@ export class UsuariosController {
   @UseGuards(JwtDataGuard, RoleGuard)
   @Roles('ID_ROL_ADMIN')
   @Put(':id/rol')
-  async updateRol(
-    @Param('id') id: string,
-    @Body() updateRolDto: UpdateUsuarioRolDto,
-  ) {
-    const usuario = await this.usuariosService.updateRol(
-      id,
-      updateRolDto.rolId,
-    );
+  async updateRol(@Param('id') id: string, @Body() updateRolDto: UpdateUsuarioRolDto) {
+    const usuario = await this.usuariosService.updateRol(id, updateRolDto.rolId);
     if (!usuario) {
-      throw new NotFoundException(
-        `Usuario con ID ${id} no encontrado o rol inválido`,
-      );
+      throw new NotFoundException(`Usuario con ID ${id} no encontrado o rol inválido`);
     }
     return usuario;
   }
 
   @MessagePattern('users.addCuentaToUser')
-  async addCuentaToUser(data: { userId: string; cuentaId: any }) {
+  async addCuentaToUser(data: { userId: string, cuentaId: any }) {
     return this.usuariosService.addCuentaToUser(data.userId, data.cuentaId);
   }
 }

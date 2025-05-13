@@ -6,20 +6,18 @@ import { FingerprintController } from './fingerprint.controller';
 import { DedoPatron, DedoPatronSchema } from 'shared-models';
 
 @Module({
-  imports: [
-    MongooseModule.forFeature([
-      {
-        name: DedoRegistrado.name,
-        schema: DedosRegistrados,
-      },
-      {
-        name: DedoPatron.name,
-        schema: DedoPatronSchema,
-      },
-    ]),
-  ],
-  providers: [FingerprintService],
-  controllers: [FingerprintController],
-  exports: [FingerprintService],
+    imports: [
+        MongooseModule.forFeature([{
+            name: DedoRegistrado.name,
+            schema: DedosRegistrados
+        },
+        {
+            name:DedoPatron.name,
+            schema: DedoPatronSchema
+        },])
+    ],
+    providers: [FingerprintService],
+    controllers: [FingerprintController],
+    exports:[FingerprintService],
 })
-export class FingerprintModule {}
+export class FingerprintModule { }

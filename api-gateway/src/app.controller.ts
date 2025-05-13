@@ -8,16 +8,16 @@ export class AppController {
   constructor(private readonly appService: AppService) {}
 
   @ApiOperation({ summary: 'Verificar el estado del API Gateway' })
-  @ApiOkResponse({
+  @ApiOkResponse({ 
     description: 'Estado del servicio',
     schema: {
       type: 'object',
       properties: {
         status: { type: 'string', example: 'online' },
         service: { type: 'string', example: 'api-gateway' },
-        timestamp: { type: 'string', format: 'date-time' },
-      },
-    },
+        timestamp: { type: 'string', format: 'date-time' }
+      }
+    }
   })
   @Get()
   getStatus() {

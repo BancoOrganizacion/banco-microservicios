@@ -15,7 +15,7 @@ export class AuthService {
       if (!token || !token.startsWith('Bearer ')) {
         return null;
       }
-
+      
       const tokenValue = token.substring(7);
       return this.jwtService.decode(tokenValue);
     } catch (error) {
@@ -30,7 +30,7 @@ export class AuthService {
       if (!token || !token.startsWith('Bearer ')) {
         return false;
       }
-
+      
       const tokenValue = token.substring(7);
       this.jwtService.verify(tokenValue);
       return true;

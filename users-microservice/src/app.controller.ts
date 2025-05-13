@@ -8,16 +8,16 @@ export class AppController {
   constructor(private readonly appService: AppService) {}
 
   @ApiOperation({ summary: 'Verificar el estado del servicio de usuarios' })
-  @ApiOkResponse({
+  @ApiOkResponse({ 
     description: 'Estado del servicio',
     schema: {
       type: 'object',
       properties: {
         status: { type: 'string', example: 'online' },
         service: { type: 'string', example: 'usuarios-microservice' },
-        timestamp: { type: 'string', format: 'date-time' },
-      },
-    },
+        timestamp: { type: 'string', format: 'date-time' }
+      }
+    }
   })
   @Get()
   getStatus() {
@@ -25,12 +25,12 @@ export class AppController {
   }
 
   @ApiOperation({ summary: 'Endpoint de prueba' })
-  @ApiOkResponse({
+  @ApiOkResponse({ 
     description: 'Mensaje de despedida',
     schema: {
       type: 'string',
-      example: 'BAY!',
-    },
+      example: 'BAY!'
+    }
   })
   @Get('/chao')
   getChao(): string {

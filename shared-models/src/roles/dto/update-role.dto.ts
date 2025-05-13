@@ -1,4 +1,4 @@
-import { IsString, IsOptional, Length, IsBoolean } from "class-validator";
+import { IsString, IsOptional, Length, IsBoolean } from 'class-validator';
 
 export class UpdateRoleDto {
   @IsString()

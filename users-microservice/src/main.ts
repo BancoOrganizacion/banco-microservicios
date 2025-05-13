@@ -20,18 +20,18 @@ async function bootstrap() {
     .addTag('usuarios', 'Endpoints de gestión de usuarios')
     .addTag('roles', 'Endpoints de gestión de roles')
     .addBearerAuth(
-      {
-        type: 'http',
-        scheme: 'bearer',
+      { 
+        type: 'http', 
+        scheme: 'bearer', 
         bearerFormat: 'JWT',
         name: 'JWT',
         description: 'Ingrese su token JWT',
-        in: 'header',
+        in: 'header'
       },
-      'JWT-auth',
+      'JWT-auth', 
     )
     .build();
-
+  
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
 
@@ -40,17 +40,16 @@ async function bootstrap() {
     options: {
       host: process.env.REDIS_HOST || 'localhost',
       port: parseInt(process.env.REDIS_PORT) || 6379,
-    },
-  };
-
+    }
+  }
+  
   // Configuración global de pipes para validación
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-    }),
-  );
+  app.useGlobalPipes(new ValidationPipe({
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transform: true,
+  }));
+
 
   app.connectMicroservice(microserviceOptions);
   await app.startAllMicroservices();
@@ -58,8 +57,6 @@ async function bootstrap() {
 
   await app.listen(3001);
   logger.log(`Users Service running at: ${await app.getUrl()}`);
-  logger.log(
-    `Swagger documentation is available at: ${await app.getUrl()}/api/docs`,
-  );
+  logger.log(`Swagger documentation is available at: ${await app.getUrl()}/api/docs`);
 }
 bootstrap();

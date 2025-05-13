@@ -10,7 +10,7 @@ import {
   Request,
   Logger,
   NotFoundException,
-  BadRequestException,
+  BadRequestException
 } from '@nestjs/common';
 import { MessagePattern } from '@nestjs/microservices';
 import { CuentasService } from './cuentas.service';
@@ -34,7 +34,7 @@ import {
   ApiNotFoundResponse,
   ApiBadRequestResponse,
   ApiUnauthorizedResponse,
-  ApiForbiddenResponse,
+  ApiForbiddenResponse
 } from '@nestjs/swagger';
 import { ObjectId } from 'mongoose';
 
@@ -43,15 +43,13 @@ import { ObjectId } from 'mongoose';
 export class CuentasController {
   private readonly logger = new Logger(CuentasController.name);
 
-  constructor(private readonly cuentasService: CuentasService) {}
+  constructor(private readonly cuentasService: CuentasService) { }
 
   // Endpoint para crear una nueva cuenta
   @ApiOperation({ summary: 'Crear una nueva cuenta bancaria' })
   @ApiBody({ type: CreateCuentaDto })
   @ApiCreatedResponse({ description: 'Cuenta creada exitosamente' })
-  @ApiBadRequestResponse({
-    description: 'Datos inválidos o el usuario ya tiene 2 cuentas',
-  })
+  @ApiBadRequestResponse({ description: 'Datos inválidos o el usuario ya tiene 2 cuentas' })
   @ApiNotFoundResponse({ description: 'Usuario no encontrado' })
   @ApiUnauthorizedResponse({ description: 'No autorizado' })
   @ApiBearerAuth('JWT-auth')
@@ -59,22 +57,15 @@ export class CuentasController {
   @Post()
   async create(@Body() createCuentaDto: CreateCuentaDto, @Request() req) {
     try {
-      this.logger.debug(
-        `Creando cuenta para usuario: ${createCuentaDto.titular}`,
-      );
+      this.logger.debug(`Creando cuenta para usuario: ${createCuentaDto.titular}`);
 
       // Si no se proporciona titular, usar el ID del usuario autenticado
       if (!createCuentaDto.titular) {
         createCuentaDto.titular = req.user.id_usuario;
       }
       // Si no es admin, solo puede crear cuentas para sí mismo
-      else if (
-        req.user.id_rol !== 'ID_ROL_ADMIN' &&
-        createCuentaDto.titular !== req.user.id_usuario
-      ) {
-        throw new BadRequestException(
-          'No tienes permiso para crear cuentas para otros usuarios',
-        );
+      else if (req.user.id_rol !== 'ID_ROL_ADMIN' && createCuentaDto.titular !== req.user.id_usuario) {
+        throw new BadRequestException('No tienes permiso para crear cuentas para otros usuarios');
       }
 
       const cuenta = await this.cuentasService.create(createCuentaDto);
@@ -86,15 +77,13 @@ export class CuentasController {
           numero_cuenta: cuenta.numero_cuenta,
           tipo_cuenta: cuenta.tipo_cuenta,
           estado: cuenta.estado,
-          titular: cuenta.titular,
-        },
+          titular: cuenta.titular
+        }
       };
     } catch (error) {
       this.logger.error(`Error al crear cuenta: ${error.message}`);
-      if (
-        error instanceof NotFoundException ||
-        error instanceof BadRequestException
-      ) {
+      if (error instanceof NotFoundException || 
+          error instanceof BadRequestException) {
         throw error;
       }
       throw new BadRequestException('Error al crear la cuenta bancaria');
@@ -129,9 +118,7 @@ export class CuentasController {
   }
 
   // Endpoint para obtener cuentas de un usuario específico (admin)
-  @ApiOperation({
-    summary: 'Obtener cuentas de un usuario específico (solo admin)',
-  })
+  @ApiOperation({ summary: 'Obtener cuentas de un usuario específico (solo admin)' })
   @ApiParam({ name: 'userId', description: 'ID del usuario' })
   @ApiOkResponse({ description: 'Lista de cuentas del usuario' })
   @ApiNotFoundResponse({ description: 'Usuario no encontrado' })
@@ -158,21 +145,17 @@ export class CuentasController {
   @UseGuards(JwtDataGuard)
   @Post(':id/restricciones')
   async addRestriccion(
-    @Param('id') id: string,
+    @Param('id') id: string, 
     @Body() restriccion: CreateRestriccionDto,
-    @Request() req,
+    @Request() req
   ) {
     this.logger.debug(`Añadiendo restricción a cuenta: ${id}`);
     const cuenta = await this.cuentasService.findOne(id);
-
+    
     // Verificar que el usuario tenga acceso a esta cuenta
-    if (
-      req.user.id_rol !== 'ID_ROL_ADMIN' &&
-      cuenta.titular.toString() !== req.user.id_usuario
-    ) {
-      throw new BadRequestException(
-        'No tienes permiso para modificar esta cuenta',
-      );
+    if (req.user.id_rol !== 'ID_ROL_ADMIN' &&
+      cuenta.titular.toString() !== req.user.id_usuario) {
+      throw new BadRequestException('No tienes permiso para modificar esta cuenta');
     }
 
     return this.cuentasService.addRestriccion(id, restriccion);
@@ -191,21 +174,15 @@ export class CuentasController {
   async removeRestriccion(
     @Param('id') id: string,
     @Param('restriccionId') restriccionId: string,
-    @Request() req,
+    @Request() req
   ) {
-    this.logger.debug(
-      `Eliminando restricción ${restriccionId} de cuenta: ${id}`,
-    );
+    this.logger.debug(`Eliminando restricción ${restriccionId} de cuenta: ${id}`);
     const cuenta = await this.cuentasService.findOne(id);
 
     // Verificar que el usuario tenga acceso a esta cuenta
-    if (
-      req.user.id_rol !== 'ID_ROL_ADMIN' &&
-      cuenta.titular.toString() !== req.user.id_usuario
-    ) {
-      throw new BadRequestException(
-        'No tienes permiso para modificar esta cuenta',
-      );
+    if (req.user.id_rol !== 'ID_ROL_ADMIN' &&
+      cuenta.titular.toString() !== req.user.id_usuario) {
+      throw new BadRequestException('No tienes permiso para modificar esta cuenta');
     }
 
     return this.cuentasService.removeRestriccion(id, restriccionId);
@@ -225,13 +202,9 @@ export class CuentasController {
     const cuenta = await this.cuentasService.findOne(id);
 
     // Verificar que el usuario tenga acceso a esta cuenta
-    if (
-      req.user.id_rol !== 'ID_ROL_ADMIN' &&
-      cuenta.titular.toString() !== req.user.id_usuario
-    ) {
-      throw new BadRequestException(
-        'No tienes permiso para ver los movimientos de esta cuenta',
-      );
+    if (req.user.id_rol !== 'ID_ROL_ADMIN' &&
+      cuenta.titular.toString() !== req.user.id_usuario) {
+      throw new BadRequestException('No tienes permiso para ver los movimientos de esta cuenta');
     }
 
     return this.cuentasService.getMovimientos(id);
@@ -239,68 +212,47 @@ export class CuentasController {
 
   // Endpoint para microservicios - Procesar movimiento
   @MessagePattern('accounts.procesarMovimiento')
-  async procesarMovimiento(data: {
-    cuentaId: string;
-    monto: number;
-    movimientoId: ObjectId;
-  }) {
-    this.logger.debug(
-      `Procesando movimiento ${data.movimientoId} para cuenta ${data.cuentaId}`,
-    );
+  async procesarMovimiento(data: { cuentaId: string, monto: number, movimientoId: ObjectId }) {
+    this.logger.debug(`Procesando movimiento ${data.movimientoId} para cuenta ${data.cuentaId}`);
     await this.cuentasService.procesarMovimiento(data);
     return { success: true };
   }
 
   // Endpoint para microservicios - Actualizar saldo
   @MessagePattern('accounts.actualizarSaldo')
-  async actualizarSaldo(data: { cuentaId: string; monto: number }) {
-    this.logger.debug(
-      `Actualizando saldo de cuenta ${data.cuentaId} en ${data.monto}`,
-    );
-    const cuenta = await this.cuentasService.actualizarSaldo(
-      data.cuentaId,
-      data.monto,
-    );
+  async actualizarSaldo(data: { cuentaId: string, monto: number }) {
+    this.logger.debug(`Actualizando saldo de cuenta ${data.cuentaId} en ${data.monto}`);
+    const cuenta = await this.cuentasService.actualizarSaldo(data.cuentaId, data.monto);
     return {
       id: cuenta._id,
       numero_cuenta: cuenta.numero_cuenta,
-      monto_actual: cuenta.monto_actual,
+      monto_actual: cuenta.monto_actual
     };
   }
 
   // Endpoint para microservicios - Buscar cuenta por número
   @MessagePattern('accounts.findByNumeroCuenta')
   async findByNumeroCuentaMS(numeroCuenta: string) {
-    this.logger.debug(
-      `Microservicio: Buscando cuenta con número: ${numeroCuenta}`,
-    );
+    this.logger.debug(`Microservicio: Buscando cuenta con número: ${numeroCuenta}`);
     return this.cuentasService.findByNumeroCuenta(numeroCuenta);
   }
 
   // Endpoint para obtener cuenta por número
   @ApiOperation({ summary: 'Obtener cuenta por número' })
-  @ApiParam({
-    name: 'numeroCuenta',
-    description: 'Número de cuenta (10 dígitos)',
-  })
+  @ApiParam({ name: 'numeroCuenta', description: 'Número de cuenta (10 dígitos)' })
   @ApiOkResponse({ description: 'Cuenta encontrada' })
   @ApiNotFoundResponse({ description: 'Cuenta no encontrada' })
   @ApiUnauthorizedResponse({ description: 'No autorizado' })
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtDataGuard)
   @Get('numero/:numeroCuenta')
-  async findByNumeroCuenta(
-    @Param('numeroCuenta') numeroCuenta: string,
-    @Request() req,
-  ) {
+  async findByNumeroCuenta(@Param('numeroCuenta') numeroCuenta: string, @Request() req) {
     this.logger.debug(`Buscando cuenta con número: ${numeroCuenta}`);
     const cuenta = await this.cuentasService.findByNumeroCuenta(numeroCuenta);
 
     // Verificar que el usuario tenga acceso a esta cuenta
-    if (
-      req.user.id_rol !== 'ID_ROL_ADMIN' &&
-      cuenta.titular.toString() !== req.user.id_usuario
-    ) {
+    if (req.user.id_rol !== 'ID_ROL_ADMIN' &&
+      cuenta.titular.toString() !== req.user.id_usuario) {
       throw new BadRequestException('No tienes permiso para ver esta cuenta');
     }
 
@@ -319,10 +271,7 @@ export class CuentasController {
   @UseGuards(JwtDataGuard, RoleGuard)
   @Roles('ID_ROL_ADMIN')
   @Put(':id')
-  async update(
-    @Param('id') id: string,
-    @Body() updateCuentaDto: UpdateCuentaDto,
-  ) {
+  async update(@Param('id') id: string, @Body() updateCuentaDto: UpdateCuentaDto) {
     this.logger.debug(`Actualizando cuenta con ID: ${id}`);
     return this.cuentasService.update(id, updateCuentaDto);
   }
@@ -332,9 +281,7 @@ export class CuentasController {
   @ApiParam({ name: 'id', description: 'ID de la cuenta' })
   @ApiOkResponse({ description: 'Cuenta cancelada' })
   @ApiNotFoundResponse({ description: 'Cuenta no encontrada' })
-  @ApiBadRequestResponse({
-    description: 'No se puede cancelar una cuenta con saldo positivo',
-  })
+  @ApiBadRequestResponse({ description: 'No se puede cancelar una cuenta con saldo positivo' })
   @ApiUnauthorizedResponse({ description: 'No autorizado' })
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtDataGuard)
@@ -344,13 +291,9 @@ export class CuentasController {
     const cuenta = await this.cuentasService.findOne(id);
 
     // Verificar que el usuario tenga acceso a esta cuenta
-    if (
-      req.user.id_rol !== 'ID_ROL_ADMIN' &&
-      cuenta.titular.toString() !== req.user.id_usuario
-    ) {
-      throw new BadRequestException(
-        'No tienes permiso para cancelar esta cuenta',
-      );
+    if (req.user.id_rol !== 'ID_ROL_ADMIN' &&
+      cuenta.titular.toString() !== req.user.id_usuario) {
+      throw new BadRequestException('No tienes permiso para cancelar esta cuenta');
     }
 
     return this.cuentasService.cancelarCuenta(id);

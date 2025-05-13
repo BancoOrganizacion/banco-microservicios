@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-  ConflictException,
-  Inject,
-} from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, Inject } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, ObjectId } from 'mongoose';
 import { Usuario, CuentaApp, UpdateUsuarioDto } from 'shared-models';
@@ -19,23 +14,21 @@ export class UsuariosService {
     @InjectModel(Usuario.name) private usuarioModel: Model<Usuario>,
     @InjectModel(CuentaApp.name) private cuentaAppModel: Model<CuentaApp>,
     private rolesService: RolesService,
-    @Inject('AUTH_SERVICE') private readonly authClient: ClientProxy,
+    @Inject('AUTH_SERVICE') private readonly authClient: ClientProxy
   ) {}
 
   async create(createUsuarioDto: CreateUsuarioDto): Promise<any> {
     // Verificar si el rol existe
     const rolExiste = await this.rolesService.findOne(createUsuarioDto.rol);
     if (!rolExiste) {
-      throw new NotFoundException(
-        `Rol con ID ${createUsuarioDto.rol} no encontrado`,
-      );
+      throw new NotFoundException(`Rol con ID ${createUsuarioDto.rol} no encontrado`);
     }
 
     // Verificar si el nombre de usuario ya existe
-    const usuarioExistente = await this.cuentaAppModel.findOne({
-      nombre_usuario: createUsuarioDto.nombre_usuario,
+    const usuarioExistente = await this.cuentaAppModel.findOne({ 
+      nombre_usuario: createUsuarioDto.nombre_usuario 
     });
-
+    
     if (usuarioExistente) {
       throw new ConflictException('El nombre de usuario ya está en uso');
     }
@@ -55,31 +48,31 @@ export class UsuariosService {
       contraseña: hashedPassword,
       persona: usuarioGuardado._id,
       cuentas: [],
-      dispositivo_autorizado: null,
+      dispositivo_autorizado: null
     });
-
+    
     await nuevaCuentaApp.save();
-
+    
     try {
       // Solicitar un token JWT al servicio de autenticación
       const token = await firstValueFrom(
         this.authClient.send('auth.generateTokenAfterRegistration', {
-          username: nombre_usuario,
+          username: nombre_usuario, 
           userId: usuarioGuardado._id.toString(),
-          rolId: usuarioGuardado.rol.toString(),
-        }),
+          rolId: usuarioGuardado.rol.toString()
+        })
       );
-
+      
       return {
         usuario: usuarioGuardado,
-        token: token.access_token,
+        token: token.access_token
       };
     } catch (error) {
-      console.error('Error al obtener token:', error);
+      console.error("Error al obtener token:", error);
       // Si falla la obtención del token, al menos retornamos el usuario creado
       return {
         usuario: usuarioGuardado,
-        error: 'No se pudo generar el token automáticamente',
+        error: "No se pudo generar el token automáticamente"
       };
     }
   }
@@ -87,7 +80,7 @@ export class UsuariosService {
   async findAll(): Promise<Usuario[]> {
     return this.usuarioModel.find().populate('rol').exec();
   }
-
+  
   async findOne(id: string): Promise<Usuario> {
     const usuario = await this.usuarioModel.findById(id).populate('rol').exec();
     if (!usuario) {
@@ -96,20 +89,18 @@ export class UsuariosService {
     return usuario;
   }
 
-  async update(
-    id: string,
-    updateUsuarioDto: UpdateUsuarioDto,
-  ): Promise<{ mensaje: string }> {
+  async update(id: string, updateUsuarioDto: UpdateUsuarioDto): Promise<{ mensaje: string }> {
     const usuarioActualizado = await this.usuarioModel
       .findByIdAndUpdate(id, updateUsuarioDto, { new: true })
       .exec();
-
+  
     if (!usuarioActualizado) {
       throw new NotFoundException(`Usuario con ID ${id} no encontrado`);
     }
-
+  
     return { mensaje: 'Usuario actualizado con éxito' };
   }
+  
 
   async updateRol(usuarioId: string, rolId: string): Promise<Usuario> {
     // Verificar si el rol existe
@@ -119,49 +110,52 @@ export class UsuariosService {
     }
 
     const usuarioActualizado = await this.usuarioModel
-      .findByIdAndUpdate(usuarioId, { rol: rolId }, { new: true })
+      .findByIdAndUpdate(
+        usuarioId, 
+        { rol: rolId },
+        { new: true }
+      )
       .populate('rol')
       .exec();
-
+    
     if (!usuarioActualizado) {
       throw new NotFoundException(`Usuario con ID ${usuarioId} no encontrado`);
     }
-
+    
     return usuarioActualizado;
   }
 
   async findByUsername(username: string) {
-    let usuario = this.cuentaAppModel
-      .findOne({
-        nombre_usuario: username,
-      })
-      .populate({
-        path: 'persona',
-        populate: { path: 'rol' },
-      });
+    let usuario = this.cuentaAppModel.findOne({ 
+      nombre_usuario: username 
+    }).populate({
+      path:'persona',
+      populate:{path:'rol'}
+    })
     //console.log(usuario)
-    return usuario;
+    return usuario
   }
 
   // Añadir una cuenta a un usuario
   async addCuentaToUser(userId: string, cuentaId: ObjectId): Promise<any> {
-    const cuentaApp = await this.cuentaAppModel.findOne({
-      persona: userId,
+    const cuentaApp = await this.cuentaAppModel.findOne({ 
+      persona: userId 
     });
-
+    
     if (!cuentaApp) {
       throw new NotFoundException(`Usuario con ID ${userId} no encontrado`);
     }
-
+    
     // Verificar si la cuenta ya está asociada al usuario
     if (cuentaApp.cuentas.includes(cuentaId)) {
       return { message: 'La cuenta ya está asociada a este usuario' };
     }
-
+    
     // Añadir la cuenta al arreglo
     cuentaApp.cuentas.push(cuentaId);
     await cuentaApp.save();
-
+    
     return { message: 'Cuenta asociada correctamente' };
   }
+  
 }

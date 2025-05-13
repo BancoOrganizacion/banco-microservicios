@@ -1,17 +1,17 @@
-import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { Document, Schema as MongooseSchema } from "mongoose";
-import { Usuario } from "../../usuarios/schemas/usuario.schema";
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { Document, Schema as MongooseSchema } from 'mongoose';
+import { Usuario } from '../../usuarios/schemas/usuario.schema';
 
 export enum EstadoCuenta {
-  ACTIVA = "ACTIVA",
-  BLOQUEADA = "BLOQUEADA",
-  INACTIVA = "INACTIVA",
-  CANCELADA = "CANCELADA",
+  ACTIVA = 'ACTIVA',
+  BLOQUEADA = 'BLOQUEADA',
+  INACTIVA = 'INACTIVA',
+  CANCELADA = 'CANCELADA'
 }
 
 @Schema({
   timestamps: true,
-  collection: "restricciones",
+  collection: 'restricciones',
 })
 export class Restriccion extends Document {
   @Prop({ required: true })
@@ -20,10 +20,10 @@ export class Restriccion extends Document {
   @Prop({ required: true })
   monto_hasta: number;
 
-  @Prop({
-    type: MongooseSchema.Types.ObjectId,
-    ref: "PatronAutenticacion",
-    required: false,
+  @Prop({ 
+    type: MongooseSchema.Types.ObjectId, 
+    ref: 'PatronAutenticacion',
+    required: false 
   })
   patron_autenticacion: MongooseSchema.Types.ObjectId;
 }
@@ -32,7 +32,7 @@ export const RestriccionSchema = SchemaFactory.createForClass(Restriccion);
 
 @Schema({
   timestamps: true,
-  collection: "cuentas",
+  collection: 'cuentas',
 })
 export class Cuenta extends Document {
   @Prop({ required: true, unique: true, length: 10 })
@@ -41,33 +41,30 @@ export class Cuenta extends Document {
   @Prop({ required: true, default: 0 })
   monto_actual: number;
 
-  @Prop({
-    type: MongooseSchema.Types.ObjectId,
-    ref: "Usuario",
-    required: true,
+  @Prop({ 
+    type: MongooseSchema.Types.ObjectId, 
+    ref: 'Usuario',
+    required: true 
   })
   titular: Usuario;
 
-  @Prop({
-    type: [{ type: MongooseSchema.Types.ObjectId, ref: "Movimiento" }],
-    default: [],
-  })
+  @Prop({ type: [{ type: MongooseSchema.Types.ObjectId, ref: 'Movimiento' }], default: [] })
   movimientos: MongooseSchema.Types.ObjectId[];
 
   @Prop({ type: [RestriccionSchema], default: [] })
   restricciones: Restriccion[];
 
-  @Prop({
-    type: String,
+  @Prop({ 
+    type: String, 
     enum: EstadoCuenta,
-    default: EstadoCuenta.ACTIVA,
+    default: EstadoCuenta.ACTIVA 
   })
   estado: EstadoCuenta;
 
   @Prop({ type: Date, default: null })
   fecha_ultimo_movimiento: Date;
 
-  @Prop({ required: true, default: "CORRIENTE" })
+  @Prop({ required: true, default: 'CORRIENTE' })
   tipo_cuenta: string;
 }
 
