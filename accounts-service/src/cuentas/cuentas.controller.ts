@@ -37,6 +37,7 @@ import {
   ApiForbiddenResponse
 } from '@nestjs/swagger';
 import { ObjectId } from 'mongoose';
+import { UpdateRestriccionDto } from './dto/update-restriccion.dto';
 
 @ApiTags('cuentas')
 @Controller('cuentas')
@@ -298,4 +299,54 @@ export class CuentasController {
 
     return this.cuentasService.cancelarCuenta(id);
   }
+
+  // Endpoint para obtener todas las restricciones de una cuenta
+@ApiOperation({ summary: 'Obtener restricciones de una cuenta' })
+@ApiParam({ name: 'id', description: 'ID de la cuenta' })
+@ApiOkResponse({ description: 'Lista de restricciones de la cuenta' })
+@ApiNotFoundResponse({ description: 'Cuenta no encontrada' })
+@ApiUnauthorizedResponse({ description: 'No autorizado' })
+@ApiBearerAuth('JWT-auth')
+@UseGuards(JwtDataGuard)
+@Get(':id/restricciones')
+async getRestricciones(@Param('id') id: string, @Request() req) {
+  const cuenta = await this.cuentasService.findOne(id);
+
+  // Verificar que el usuario tenga acceso a esta cuenta
+  if (req.user.id_rol !== 'ID_ROL_ADMIN' &&
+    cuenta.titular.toString() !== req.user.id_usuario) {
+    throw new BadRequestException('No tienes permiso para ver las restricciones de esta cuenta');
+  }
+
+  return this.cuentasService.getRestricciones(id);
+}
+
+// Endpoint para actualizar una restricción
+@ApiOperation({ summary: 'Actualizar una restricción de una cuenta' })
+@ApiParam({ name: 'id', description: 'ID de la cuenta' })
+@ApiParam({ name: 'restriccionId', description: 'ID de la restricción' })
+@ApiBody({ type: UpdateRestriccionDto })
+@ApiOkResponse({ description: 'Restricción actualizada' })
+@ApiNotFoundResponse({ description: 'Cuenta o restricción no encontrada' })
+@ApiBadRequestResponse({ description: 'Datos inválidos o rangos solapados' })
+@ApiUnauthorizedResponse({ description: 'No autorizado' })
+@ApiBearerAuth('JWT-auth')
+@UseGuards(JwtDataGuard)
+@Put(':id/restricciones/:restriccionId')
+async updateRestriccion(
+  @Param('id') id: string,
+  @Param('restriccionId') restriccionId: string,
+  @Body() updateRestriccionDto: UpdateRestriccionDto,
+  @Request() req
+) {
+  const cuenta = await this.cuentasService.findOne(id);
+
+  // Verificar que el usuario tenga acceso a esta cuenta
+  if (req.user.id_rol !== 'ID_ROL_ADMIN' &&
+    cuenta.titular.toString() !== req.user.id_usuario) {
+    throw new BadRequestException('No tienes permiso para modificar las restricciones de esta cuenta');
+  }
+
+  return this.cuentasService.updateRestriccion(id, restriccionId, updateRestriccionDto);
+}
 }
