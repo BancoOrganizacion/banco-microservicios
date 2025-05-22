@@ -438,4 +438,44 @@ export class ProxyController {
   async removeCuentaRestriccion(@Req() req: Request, @Res() res: Response) {
     return this.handleProxyRequest('accounts', req, res);
   }
+
+  // Endpoint para obtener restricciones de una cuenta
+  @ApiTags('accounts')
+  @ApiOperation({ summary: 'Obtener restricciones de una cuenta' })
+  @ApiParam({ name: 'id', type: 'string', description: 'ID de la cuenta' })
+  @ApiBearerAuth('JWT-auth')
+  @ApiResponse({ status: 200, description: 'Lista de restricciones' })
+  @ApiResponse({ status: 404, description: 'Cuenta no encontrada' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
+  @ApiResponse({ status: 403, description: 'Acceso denegado' })
+  @Get('accounts/cuentas/:id/restricciones')
+  async getCuentaRestricciones(@Req() req: Request, @Res() res: Response) {
+    return this.handleProxyRequest('accounts', req, res);
+  }
+
+  // Endpoint para actualizar una restricción
+  @ApiTags('accounts')
+  @ApiOperation({ summary: 'Actualizar una restricción de una cuenta' })
+  @ApiParam({ name: 'id', type: 'string', description: 'ID de la cuenta' })
+  @ApiParam({ name: 'restriccionId', type: 'string', description: 'ID de la restricción' })
+  @ApiBearerAuth('JWT-auth')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        monto_desde: { type: 'number', example: 0 },
+        monto_hasta: { type: 'number', example: 100 },
+        patron_autenticacion: { type: 'string', example: '60d5ecb74e4e8d1b5cbf2457', nullable: true }
+      }
+    }
+  })
+  @ApiResponse({ status: 200, description: 'Restricción actualizada exitosamente' })
+  @ApiResponse({ status: 400, description: 'Datos inválidos o rangos solapados' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
+  @ApiResponse({ status: 403, description: 'Acceso denegado' })
+  @ApiResponse({ status: 404, description: 'Cuenta o restricción no encontrada' })
+  @Put('accounts/cuentas/:id/restricciones/:restriccionId')
+  async updateCuentaRestriccion(@Req() req: Request, @Res() res: Response) {
+    return this.handleProxyRequest('accounts', req, res);
+  }
 }

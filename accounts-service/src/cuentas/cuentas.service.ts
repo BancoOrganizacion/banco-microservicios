@@ -1,12 +1,13 @@
 import { Injectable, NotFoundException, BadRequestException, Logger, Inject } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, ObjectId } from 'mongoose';
-import { Cuenta, EstadoCuenta } from 'shared-models';
+import { Model, ObjectId, Types } from 'mongoose';
+import { Cuenta, EstadoCuenta, Restriccion } from 'shared-models';
 import { CreateCuentaDto } from 'shared-models';
 import { CreateRestriccionDto } from 'shared-models';
 import { UpdateCuentaDto } from 'shared-models';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
+import { UpdateRestriccionDto } from './dto/update-restriccion.dto';
 
 @Injectable()
 export class CuentasService {
@@ -176,48 +177,38 @@ export class CuentasService {
   }
 
   /**
-   * Añade una restricción a una cuenta
-   */
-  async addRestriccion(id: string, restriccion: CreateRestriccionDto): Promise<Cuenta> {
-    const cuenta = await this.cuentaModel.findById(id).exec();
-    
-    if (!cuenta) {
-      throw new NotFoundException(`Cuenta con ID ${id} no encontrada`);
-    }
+ * Añade una restricción a una cuenta
+ */
+async addRestriccion(id: string, restriccion: CreateRestriccionDto): Promise<Cuenta> {
+  // Validaciones existentes...
   
-    // Validar que monto_desde sea menor que monto_hasta
-    if (restriccion.monto_desde >= restriccion.monto_hasta) {
-      throw new BadRequestException('El monto inicial debe ser menor que el monto final');
-    }
-    
-    // Validar si el patrón de autenticación existe (si se proporciona)
-    if (restriccion.patron_autenticacion) {
-      // Aquí iría la lógica para validar con el microservicio de autenticación
-      // Por ahora, continuamos asumiendo que el patrón existe
-    }
-    
-    // Validar que los rangos no se solapen con restricciones existentes
-    const solapamiento = cuenta.restricciones.some(r => 
-      (restriccion.monto_desde <= r.monto_hasta && restriccion.monto_hasta >= r.monto_desde)
-    );
-    
-    if (solapamiento) {
-      throw new BadRequestException(`Los rangos de monto se solapan con restricciones existentes`);
-    }
-    
-    // Modificamos esta parte para usar la forma correcta de agregar elementos a un documento de Mongoose
-    cuenta.restricciones.push({
-      monto_desde: restriccion.monto_desde,
-      monto_hasta: restriccion.monto_hasta,
-      patron_autenticacion: restriccion.patron_autenticacion
-    } as any); // Usamos 'as any' para evitar el error de TypeScript
-
-    this.logger.debug(`Añadiendo restricción a cuenta: ${cuenta.restricciones.toString}`);
-    
-    
-
-    return cuenta.save();
+  // Crear explícitamente un objeto con la estructura exacta esperada por el esquema
+  const nuevaRestriccion = {
+    monto_desde: restriccion.monto_desde,
+    monto_hasta: restriccion.monto_hasta
+  };
+  
+  // Si hay un patron_autenticacion, añadirlo (solo si no es null/undefined)
+  if (restriccion.patron_autenticacion) {
+    nuevaRestriccion['patron_autenticacion'] = new Types.ObjectId(restriccion.patron_autenticacion);
   }
+
+  
+  console.log("Nueva restricción a guardar:", nuevaRestriccion);
+
+  // Usar findByIdAndUpdate con $push, pero asegurándonos de dar el formato correcto
+  const cuentaActualizada = await this.cuentaModel.findByIdAndUpdate(
+    id,
+    { $push: { restricciones: nuevaRestriccion } },
+    { new: true }
+  ).exec();
+  console.log("Cuenta actualizada:", JSON.stringify(cuentaActualizada, null, 2));
+  if (!cuentaActualizada) {
+    throw new NotFoundException(`Cuenta con ID ${id} no encontrada`);
+  }
+  
+  return cuentaActualizada;
+}
 
   /**
    * Elimina una restricción de una cuenta
@@ -300,4 +291,81 @@ export class CuentasService {
       throw error;
     }
   }
+  
+  // Obtener todas las restricciones de una cuenta
+async getRestricciones(cuentaId: string): Promise<Restriccion[]> {
+  const cuenta = await this.cuentaModel.findById(cuentaId).exec();
+  
+  if (!cuenta) {
+    throw new NotFoundException(`Cuenta con ID ${cuentaId} no encontrada`);
+  }
+  
+  return cuenta.restricciones;
+}
+
+// Actualizar una restricción específica
+async updateRestriccion(
+  cuentaId: string, 
+  restriccionId: string,
+  updateRestriccionDto: UpdateRestriccionDto
+): Promise<Cuenta> {
+  const cuenta = await this.cuentaModel.findById(cuentaId).exec();
+  
+  if (!cuenta) {
+    throw new NotFoundException(`Cuenta con ID ${cuentaId} no encontrada`);
+  }
+  
+  // Buscar la restricción por ID
+  const restriccionIndex = cuenta.restricciones.findIndex(
+    r => r._id.toString() === restriccionId
+  );
+  
+  if (restriccionIndex === -1) {
+    throw new NotFoundException(`Restricción con ID ${restriccionId} no encontrada`);
+  }
+  
+  // Validar que monto_desde sea menor que monto_hasta si ambos están presentes
+  if (
+    updateRestriccionDto.monto_desde !== undefined && 
+    updateRestriccionDto.monto_hasta !== undefined &&
+    updateRestriccionDto.monto_desde >= updateRestriccionDto.monto_hasta
+  ) {
+    throw new BadRequestException('El monto inicial debe ser menor que el monto final');
+  }
+  
+  // Verificar solapamiento con otras restricciones
+  if (updateRestriccionDto.monto_desde !== undefined || updateRestriccionDto.monto_hasta !== undefined) {
+    const montoDesde = updateRestriccionDto.monto_desde ?? cuenta.restricciones[restriccionIndex].monto_desde;
+    const montoHasta = updateRestriccionDto.monto_hasta ?? cuenta.restricciones[restriccionIndex].monto_hasta;
+    
+    const solapamiento = cuenta.restricciones.some((r, idx) => {
+      if (idx === restriccionIndex) return false; // Excluir la restricción actual
+      return (montoDesde <= r.monto_hasta && montoHasta >= r.monto_desde);
+    });
+    
+    if (solapamiento) {
+      throw new BadRequestException(`Los rangos de monto se solapan con restricciones existentes`);
+    }
+  }
+  
+  // Actualizar los campos de la restricción
+  if (updateRestriccionDto.monto_desde !== undefined) {
+    cuenta.restricciones[restriccionIndex].monto_desde = updateRestriccionDto.monto_desde;
+  }
+  
+  if (updateRestriccionDto.monto_hasta !== undefined) {
+    cuenta.restricciones[restriccionIndex].monto_hasta = updateRestriccionDto.monto_hasta;
+  }
+  
+  if (updateRestriccionDto.patron_autenticacion !== undefined) {
+    // Convertir a ObjectId si es string
+    cuenta.restricciones[restriccionIndex].patron_autenticacion = 
+      typeof updateRestriccionDto.patron_autenticacion === 'string'
+        ? new (require('mongoose').Types.ObjectId)(updateRestriccionDto.patron_autenticacion)
+        : updateRestriccionDto.patron_autenticacion;
+  }
+  
+  return cuenta.save();
+}
+
 }
