@@ -25,7 +25,7 @@ async function bootstrap() {
     transformOptions: { enableImplicitConversion: true }
   }));
 
-  await app.listen(3003); // Usa un puerto diferente a tus otros servicios
+  await app.listen(3008); // Usa un puerto diferente a tus otros servicios
   console.log(`Fingerprint service is running on: ${await app.getUrl()}`);
 }
 bootstrap();

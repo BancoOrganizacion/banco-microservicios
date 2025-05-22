@@ -211,7 +211,11 @@ export class CuentasService {
       monto_hasta: restriccion.monto_hasta,
       patron_autenticacion: restriccion.patron_autenticacion
     } as any); // Usamos 'as any' para evitar el error de TypeScript
+
+    this.logger.debug(`Añadiendo restricción a cuenta: ${cuenta.restricciones.toString}`);
     
+    
+
     return cuenta.save();
   }
 

@@ -21,6 +21,9 @@ export * from './fingerprint/dto/create-fingerpattern.dto';
 export * from './fingerprint/schemas/dedopatron.schema';
 export * from './fingerprint/schemas/fingerprint.schemas';
 
+export * from './pattern/schemas/patronautenticacion.schema';
+export * from './pattern/dto/pattern.dto';
+
 export * from './telegram/dto/generate-telegram-link.dto';
 export * from './telegram/dto/register-telegram.dto';
 export * from './telegram/schemas/telegram-chat.schema';
