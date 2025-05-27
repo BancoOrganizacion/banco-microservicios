@@ -4,6 +4,7 @@ import { DedoRegistrado, DedosRegistrados } from 'shared-models';
 import { FingerprintService } from './fingerprint.service';
 import { FingerprintController } from './fingerprint.controller';
 import { DedoPatron, DedoPatronSchema } from 'shared-models';
+import { JwtDataGuard } from './guards/jwt-data.guard';
 
 @Module({
     imports: [
@@ -16,7 +17,9 @@ import { DedoPatron, DedoPatronSchema } from 'shared-models';
             schema: DedoPatronSchema
         },])
     ],
-    providers: [FingerprintService],
+    providers: [FingerprintService,
+        JwtDataGuard
+    ],
     controllers: [FingerprintController],
     exports:[FingerprintService],
 })

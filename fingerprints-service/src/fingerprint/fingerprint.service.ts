@@ -20,7 +20,10 @@ export class FingerprintService {
     try {
       const dedos = await this.dedoPatronModel
         .find({ id_cuenta_app: id })
-        .populate('dedos_registrados') // Asegura traer el documento completo
+        .populate({
+          path:'dedos_registrados',
+          select:'_id dedo'
+        }) // Asegura traer el documento completo
         .exec();
 
       // Extraer solo los dedos registrados
@@ -28,7 +31,7 @@ export class FingerprintService {
 
       return dedosRegistrados;
     } catch (error) {
-      throw new BadRequestException(`Error al obtener dedos registrados: ${error.message}`);
+      throw new BadRequestException(`Error al obtener dedos registrados:`);
     }
   }
 

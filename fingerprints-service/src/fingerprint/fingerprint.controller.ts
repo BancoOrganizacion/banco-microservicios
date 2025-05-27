@@ -1,8 +1,9 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Post,UseGuards } from '@nestjs/common';
 import { FingerprintService } from './fingerprint.service';
 import { Dedos } from 'shared-models';
 import { CreateFingerpatternDto } from 'shared-models';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
+import { JwtDataGuard } from './guards/jwt-data.guard';
 
 @ApiTags('fingerprints')
 @Controller('fingerprint')
@@ -43,6 +44,8 @@ export class FingerprintController {
         return this.fingerprintService.createFingerPattern(createFingerpatternDto);
     }
     @Post('get-fingers')
+    @UseGuards(JwtDataGuard)
+    @ApiBearerAuth('JWT-auth')
     @ApiOperation({ summary: 'Obtener dedos registrados por cuenta' })
     @ApiBody({
         schema: {
@@ -58,6 +61,7 @@ export class FingerprintController {
     })
     @ApiResponse({ status: 200, description: 'Dedos registrados encontrados' })
     @ApiResponse({ status: 400, description: 'ID inválido o no se encontraron dedos' })
+
     async getFingersByAccount(@Body() body: { id_cuenta_app: string }) {
         return this.fingerprintService.getFingersByAccount(body.id_cuenta_app);
     }
