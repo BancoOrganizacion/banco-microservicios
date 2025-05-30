@@ -1,6 +1,6 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 
-//Decorador personalizado para extraer datos del JWT
+// ✅ Decorador personalizado para extraer datos del JWT
 export const CurrentUser = createParamDecorator(
   (data: string | undefined, ctx: ExecutionContext) => {
     const request = ctx.switchToHttp().getRequest();
@@ -16,7 +16,7 @@ export const CurrentUser = createParamDecorator(
   },
 );
 
-//Decorador específico para obtener el ID del usuario
+// ✅ Decorador específico para obtener el ID del usuario
 export const GetUserId = createParamDecorator(
   (data: unknown, ctx: ExecutionContext): string => {
     const request = ctx.switchToHttp().getRequest();

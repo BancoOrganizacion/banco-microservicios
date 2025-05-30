@@ -49,7 +49,6 @@ export class FingerprintController {
         return this.fingerprintService.createFingerPattern(createFingerpatternDto);
     }
 
-    //ENDPOINT MODIFICADO: Ya no recibe id_cuenta_app en el body
     @Post('get-fingers')
     @UseGuards(JwtDataGuard)
     @ApiBearerAuth('JWT-auth')
