@@ -12,6 +12,7 @@ import {
   HttpException, 
   HttpStatus,
   Logger,
+  Patch,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { ProxyService } from './proxy.service';
@@ -290,8 +291,13 @@ export class ProxyController {
   // Método general para manejar las solicitudes de proxy
   private async handleProxyRequest(service: string, req: Request, res: Response) {
     try {
-      // Extraer la ruta específica del servicio (después de 'auth/' o 'users/')
-      const path = req.url.split('/').slice(2).join('/');
+      // Extraer la ruta específica del servicio
+      let path = req.url.split('/').slice(2).join('/');
+      
+      // Caso especial para fingerprints: agregar el prefijo 'fingerprint'
+      if (service === 'fingerprints') {
+        path = `fingerprint/${path}`;
+      }
       
       // Enviar la solicitud al microservicio correspondiente
       const result = await this.proxyService.forwardRequest(
@@ -397,7 +403,6 @@ export class ProxyController {
   async getMovimientosCuenta(@Req() req: Request, @Res() res: Response) {
     return this.handleProxyRequest('accounts', req, res);
   }
-  // Dentro de la clase ProxyController en proxy.controller.ts
 
   @ApiTags('accounts')
   @ApiOperation({ summary: 'Añadir una restricción a una cuenta' })
@@ -477,5 +482,316 @@ export class ProxyController {
   @Put('accounts/cuentas/:id/restricciones/:restriccionId')
   async updateCuentaRestriccion(@Req() req: Request, @Res() res: Response) {
     return this.handleProxyRequest('accounts', req, res);
+  }
+
+  // ========================= ENDPOINTS DE PATRONES =========================
+  
+  @ApiTags('patterns')
+  @ApiOperation({ summary: 'Crear nuevo patrón de autenticación' })
+  @ApiBearerAuth('JWT-auth')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        dedosPatronIds: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Array de IDs de dedos patrón para crear el patrón de autenticación',
+          example: ['dedo_pulgar_derecho_123', 'dedo_indice_derecho_456', 'dedo_medio_izquierdo_789'],
+          minItems: 1
+        }
+      },
+      required: ['dedosPatronIds']
+    }
+  })
+  @ApiResponse({ status: 201, description: 'Patrón creado exitosamente' })
+  @ApiResponse({ status: 400, description: 'Datos inválidos o incompletos' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
+  @Post('patterns')
+  async crearPatron(@Req() req: Request, @Res() res: Response) {
+    return this.handleProxyRequest('patterns', req, res);
+  }
+
+  @ApiTags('patterns')
+  @ApiOperation({ summary: 'Obtener patrón por ID' })
+  @ApiParam({ 
+    name: 'id', 
+    type: 'string', 
+    description: 'ID único del patrón de autenticación',
+    example: 'patron_abc123def456'
+  })
+  @ApiBearerAuth('JWT-auth')
+  @ApiResponse({ status: 200, description: 'Patrón encontrado exitosamente' })
+  @ApiResponse({ status: 404, description: 'Patrón no encontrado' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
+  @Get('patterns/:id')
+  async obtenerPatron(@Req() req: Request, @Res() res: Response) {
+    return this.handleProxyRequest('patterns', req, res);
+  }
+
+  @ApiTags('patterns')
+  @ApiOperation({ summary: 'Obtener dedos patrón' })
+  @ApiParam({ 
+    name: 'id', 
+    type: 'string', 
+    description: 'ID único del patrón de autenticación',
+    example: 'patron_abc123def456'
+  })
+  @ApiBearerAuth('JWT-auth')
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Dedos patrón obtenidos exitosamente',
+    schema: {
+      example: {
+        dedos: [
+          {
+            id: 'dedo_pulgar_derecho_123',
+            nombre: 'Pulgar derecho',
+            template: 'Rk1SACAyMAAAAAFgAAABPQFhAMUAxQEAAAAnYQC1...',
+            calidad: 85
+          }
+        ]
+      }
+    }
+  })
+  @ApiResponse({ status: 404, description: 'Patrón no encontrado' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
+  @Get('patterns/:id/dedos')
+  async obtenerDedosPatron(@Req() req: Request, @Res() res: Response) {
+    return this.handleProxyRequest('patterns', req, res);
+  }
+
+  @ApiTags('patterns')
+  @ApiOperation({ summary: 'Obtener patterns por cuenta' })
+  @ApiBearerAuth('JWT-auth')
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Patrones obtenidos exitosamente',
+    schema: {
+      example: [
+        {
+          id: 'patron_abc123def456',
+          idCuentaApp: 'cuenta_usuario_789',
+          dedosPatronIds: ['dedo_pulgar_derecho_123', 'dedo_indice_derecho_456'],
+          activo: true,
+          fechaCreacion: '2025-05-29T10:30:00.000Z',
+          fechaActualizacion: '2025-05-29T10:30:00.000Z'
+        }
+      ]
+    }
+  })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
+  @Get('patterns')
+  async obtenerPatronesPorCuenta(@Req() req: Request, @Res() res: Response) {
+    return this.handleProxyRequest('patterns', req, res);
+  }
+
+  @ApiTags('patterns')
+  @ApiOperation({ summary: 'Cambiar estado del patrón' })
+  @ApiParam({ 
+    name: 'id', 
+    type: 'string', 
+    description: 'ID único del patrón de autenticación',
+    example: 'patron_abc123def456'
+  })
+  @ApiBearerAuth('JWT-auth')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        activo: {
+          type: 'boolean',
+          description: 'Nuevo estado del patrón (true = activo, false = inactivo)',
+          example: true
+        }
+      },
+      required: ['activo']
+    }
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Estado del patrón actualizado exitosamente',
+    schema: {
+      example: {
+        id: 'patron_abc123def456',
+        activo: false,
+        mensaje: 'Estado del patrón actualizado correctamente'
+      }
+    }
+  })
+  @ApiResponse({ status: 404, description: 'Patrón no encontrado' })
+  @ApiResponse({ status: 400, description: 'Valor del parámetro "activo" inválido' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
+  @Patch('patterns/:id/estado')
+  async cambiarEstadoPatron(@Req() req: Request, @Res() res: Response) {
+    return this.handleProxyRequest('patterns', req, res);
+  }
+
+  @ApiTags('patterns')
+  @ApiOperation({ summary: 'Validar patrón para autenticación' })
+  @ApiParam({ 
+    name: 'id', 
+    type: 'string', 
+    description: 'ID único del patrón de autenticación',
+    example: 'patron_abc123def456'
+  })
+  @ApiBearerAuth('JWT-auth')
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Validación completada exitosamente',
+    schema: {
+      example: { valido: true }
+    }
+  })
+  @ApiResponse({ status: 404, description: 'Patrón no encontrado' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
+  @Get('patterns/:id/validar')
+  async validarPatron(@Req() req: Request, @Res() res: Response) {
+    return this.handleProxyRequest('patterns', req, res);
+  }
+
+  @ApiTags('patterns')
+  @ApiOperation({ summary: 'Obtener información para autenticación' })
+  @ApiParam({ 
+    name: 'id', 
+    type: 'string', 
+    description: 'ID único del patrón de autenticación',
+    example: 'patron_abc123def456'
+  })
+  @ApiBearerAuth('JWT-auth')
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Información de autenticación obtenida exitosamente',
+    schema: {
+      example: {
+        patron: {
+          id: 'patron_abc123def456',
+          idCuentaApp: 'cuenta_usuario_789',
+          activo: true,
+          dedosPatronIds: ['dedo_pulgar_derecho_123', 'dedo_indice_derecho_456']
+        },
+        templates: [
+          {
+            id: 'dedo_pulgar_derecho_123',
+            nombre: 'Pulgar derecho',
+            template: 'Rk1SACAyMAAAAAFgAAABPQFhAMUAxQEAAAAnYQC1...',
+            calidad: 85
+          }
+        ],
+        metadatos: {
+          algoritmo: 'ISO_19794_2',
+          version: '2.0',
+          fechaGeneracion: '2025-05-29T10:30:00.000Z'
+        }
+      }
+    }
+  })
+  @ApiResponse({ status: 404, description: 'Patrón no encontrado o no disponible para autenticación' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
+  @Get('patterns/:id/autenticacion')
+  async obtenerPatronParaAutenticacion(@Req() req: Request, @Res() res: Response) {
+    return this.handleProxyRequest('patrones', req, res);
+  }
+
+  // Catch-all para otros endpoints de patrones
+  @All('patterns/*')
+  async proxyToPatrones(@Req() req: Request, @Res() res: Response) {
+    return this.handleProxyRequest('patterns', req, res);
+  }
+
+  // ========================= FIN ENDPOINTS DE PATRONES =========================
+
+
+  // Documentación para los endpoints de fingerprints
+  @ApiTags('fingerprints')
+  @ApiOperation({ summary: 'Registrar una huella digital' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        dedo: {
+          type: 'string',
+          description: 'Tipo de dedo',
+          enum: ['PULGAR_DERECHO', 'INDICE_DERECHO', 'MEDIO_DERECHO', 'ANULAR_DERECHO', 'MENIQUE_DERECHO', 
+                 'PULGAR_IZQUIERDO', 'INDICE_IZQUIERDO', 'MEDIO_IZQUIERDO', 'ANULAR_IZQUIERDO', 'MENIQUE_IZQUIERDO'],
+          example: 'INDICE_DERECHO'
+        },
+        huella: {
+          type: 'string',
+          description: 'Datos de la huella digital en formato string',
+          example: 'base64_encoded_fingerprint_data'
+        }
+      },
+      required: ['dedo', 'huella']
+    }
+  })
+  @ApiResponse({ status: 201, description: 'Huella registrada con éxito' })
+  @ApiResponse({ status: 400, description: 'Datos de entrada inválidos' })
+  @Post('fingerprints/register')
+  async registerFinger(@Req() req: Request, @Res() res: Response) {
+    return this.handleProxyRequest('fingerprints', req, res);
+  }
+
+  @ApiTags('fingerprints')
+  @ApiOperation({ summary: 'Crear un patrón de huella digital' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        nombre: {
+          type: 'string',
+          description: 'Nombre del patrón',
+          example: 'Patrón de acceso principal'
+        },
+        descripcion: {
+          type: 'string',
+          description: 'Descripción del patrón',
+          example: 'Patrón utilizado para transacciones de alto valor'
+        },
+        dedos: {
+          type: 'array',
+          items: {
+            type: 'string'
+          },
+          description: 'Array de IDs de huellas que forman el patrón',
+          example: ['60d5ecb74e4e8d1b5cbf2457', '60d5ecb74e4e8d1b5cbf2458']
+        }
+      },
+      required: ['nombre', 'dedos']
+    }
+  })
+  @ApiResponse({ status: 201, description: 'Patrón de huella creado con éxito' })
+  @ApiResponse({ status: 400, description: 'Datos de entrada inválidos' })
+  @Post('fingerprints/pattern')
+  async createPattern(@Req() req: Request, @Res() res: Response) {
+    return this.handleProxyRequest('fingerprints', req, res);
+  }
+
+  @ApiTags('fingerprints')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Obtener dedos registrados por cuenta' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        id_cuenta_app: {
+          type: 'string',
+          description: 'ID de la cuenta asociada',
+          example: '60d5ecb74e4e8d1b5cbf2459'
+        }
+      },
+      required: ['id_cuenta_app']
+    }
+  })
+  @ApiResponse({ status: 200, description: 'Dedos registrados encontrados' })
+  @ApiResponse({ status: 400, description: 'ID inválido o no se encontraron dedos' })
+  @Post('fingerprints/get-fingers')
+  async getFingersByAccount(@Req() req: Request, @Res() res: Response) {
+    return this.handleProxyRequest('fingerprints', req, res);
+  }
+
+  @All('fingerprints/*')
+  async proxyToFingerprints(@Req() req: Request, @Res() res: Response) {
+    return this.handleProxyRequest('fingerprints', req, res);
   }
 }

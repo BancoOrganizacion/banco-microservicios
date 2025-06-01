@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { PatronAutenticacion } from 'shared-models';
+import { CuentaApp, PatronAutenticacion } from 'shared-models';
 import { DedoPatron } from 'shared-models';
 
 @Injectable()
@@ -11,17 +11,21 @@ export class PatternService {
     private readonly patronAutenticacionModel: Model<PatronAutenticacion>,
     @InjectModel(DedoPatron.name)
     private readonly dedoPatronModel: Model<DedoPatron>,
+    @InjectModel(CuentaApp.name) private cuentaAppModel: Model<CuentaApp>
+    
   ) {}
 
   /**
    * Crear un nuevo patrón de autenticación
    */
   async crearPatronAutenticacion(
-    idCuentaApp: string,
+    idUsuario: string,
     dedosPatronIds: string[]
   ): Promise<PatronAutenticacion> {
     try {
       // Validar que los dedos patrón existan
+      const cuentaAppUsuario = await this.cuentaAppModel.findOne({persona:idUsuario});
+
       const dedosExistentes = await this.dedoPatronModel
         .find({ _id: { $in: dedosPatronIds } })
         .exec();
@@ -100,11 +104,13 @@ export class PatternService {
   /**
    * Obtener patrones activos por cuenta de aplicación
    */
-  async obtenerPatronesPorCuenta(idCuentaApp: string): Promise<PatronAutenticacion[]> {
+  async obtenerPatronesPorCuenta(idUsuario: string): Promise<PatronAutenticacion[]> {
     try {
       // Primero obtenemos los dedos patrón de la cuenta
+      const cuentaAppUsuario = await this.cuentaAppModel.findOne({persona:idUsuario});
+
       const dedosPatron = await this.dedoPatronModel
-        .find({ id_cuenta_app: idCuentaApp })
+        .find({ id_cuenta_app: cuentaAppUsuario._id })
         .exec();
 
       const dedosPatronIds = dedosPatron.map(dedo => dedo._id);

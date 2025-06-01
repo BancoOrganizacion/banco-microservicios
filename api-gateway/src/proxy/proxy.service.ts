@@ -21,6 +21,8 @@ export class ProxyService {
       auth: configService.get('AUTH_SERVICE_URL', 'http://localhost:3002'),
       users: configService.get('USERS_SERVICE_URL', 'http://localhost:3001'),
       accounts: configService.get('ACCOUNTS_SERVICE_URL', 'http://localhost:3003'),
+      fingerprints: configService.get('FINGERPRINT_SERVICE_URL','http://localhost:3008'),
+      patterns:configService.get('PATTERNS_SERVICE_URL','http://localhost:3009')
     };
   }
 

@@ -1,8 +1,10 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Post, UseGuards } from '@nestjs/common';
 import { FingerprintService } from './fingerprint.service';
 import { Dedos } from 'shared-models';
 import { CreateFingerpatternDto } from 'shared-models';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
+import { JwtDataGuard } from './guards/jwt-data.guard';
+import { GetUserId, CurrentUser } from './decorators/user.decorator';
 
 @ApiTags('fingerprints')
 @Controller('fingerprint')
@@ -35,30 +37,42 @@ export class FingerprintController {
     }
 
     @Post('pattern')
+    @UseGuards(JwtDataGuard)
+    @ApiBearerAuth('JWT-auth')
     @ApiOperation({ summary: 'Crear un patrón de huella digital' })
     @ApiBody({ type: CreateFingerpatternDto })
     @ApiResponse({ status: 201, description: 'Patrón de huella creado con éxito' })
+    @ApiResponse({ status: 401, description: 'No autorizado - Token requerido' })
+    @ApiResponse({ status: 403, description: 'Token inválido' })
     @ApiResponse({ status: 400, description: 'Datos de entrada inválidos' })
     async createPattern(@Body() createFingerpatternDto: CreateFingerpatternDto) {
         return this.fingerprintService.createFingerPattern(createFingerpatternDto);
     }
+
     @Post('get-fingers')
-    @ApiOperation({ summary: 'Obtener dedos registrados por cuenta' })
-    @ApiBody({
+    @UseGuards(JwtDataGuard)
+    @ApiBearerAuth('JWT-auth')
+    @ApiOperation({ summary: 'Obtener dedos registrados del usuario autenticado' })
+    @ApiResponse({ 
+        status: 200, 
+        description: 'Dedos registrados encontrados para el usuario autenticado',
         schema: {
-            type: 'object',
-            properties: {
-                id_cuenta_app: {
-                    type: 'string',
-                    description: 'ID de la cuenta asociada',
+            type: 'array',
+            items: {
+                type: 'object',
+                properties: {
+                    dedo: { type: 'string' },
+                    huella: { type: 'string' },
+                    // Agrega aquí las propiedades que retorna tu servicio
                 }
-            },
-            required: ['id_cuenta_app']
+            }
         }
     })
-    @ApiResponse({ status: 200, description: 'Dedos registrados encontrados' })
-    @ApiResponse({ status: 400, description: 'ID inválido o no se encontraron dedos' })
-    async getFingersByAccount(@Body() body: { id_cuenta_app: string }) {
-        return this.fingerprintService.getFingersByAccount(body.id_cuenta_app);
+    @ApiResponse({ status: 401, description: 'No autorizado - Token requerido' })
+    @ApiResponse({ status: 403, description: 'Token inválido' })
+    @ApiResponse({ status: 404, description: 'No se encontraron dedos registrados para este usuario' })
+    async getFingersByAccount(@GetUserId() userId: string) {
+        //Llamar al servicio con el ID del usuario del JWT
+        return this.fingerprintService.getFingersByAccount(userId);
     }
 }

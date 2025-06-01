@@ -11,6 +11,18 @@ async function bootstrap() {
   .setTitle('Fingerprints service API')
   .setDescription('API para el servicio de huellas dactilares')
   .setVersion('1.0')
+  .addBearerAuth(
+    {
+      type:'http',
+      scheme:'bearer',
+      bearerFormat:'JWT',
+      name:'JWT',
+      description:'Enter JWT token',
+      in:'header'
+
+    },
+    'JWT-auth',
+  )
   .addTag('fingerprints')
   .build();
 

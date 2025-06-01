@@ -4,12 +4,14 @@ import { Model, Types } from 'mongoose';
 import { DedoRegistrado, Dedos } from 'shared-models';
 import { DedoPatron } from 'shared-models';
 import { CreateFingerpatternDto } from 'shared-models';
+import { CuentaApp } from 'shared-models';
 
 @Injectable()
 export class FingerprintService {
   constructor(
     @InjectModel(DedoRegistrado.name) private dedoRegistradoModel: Model<DedoRegistrado>,
-    @InjectModel(DedoPatron.name) private dedoPatronModel: Model<DedoPatron>
+    @InjectModel(DedoPatron.name) private dedoPatronModel: Model<DedoPatron>,
+    @InjectModel(CuentaApp.name) private cuentaAppModel: Model<CuentaApp>
   ) { }
 
   async registerFinger(dedoRegistrado: { dedo: Dedos; huella: string }) {
@@ -18,9 +20,14 @@ export class FingerprintService {
   }
   async getFingersByAccount(id: string) {
     try {
+      const cuentaAppUsuario = await this.cuentaAppModel.findOne({persona:id});
+
       const dedos = await this.dedoPatronModel
-        .find({ id_cuenta_app: id })
-        .populate('dedos_registrados') // Asegura traer el documento completo
+        .find({ id_cuenta_app: cuentaAppUsuario._id })
+        .populate({
+          path:'dedos_registrados',
+          select:'_id dedo'
+        }) // Asegura traer el documento completo
         .exec();
 
       // Extraer solo los dedos registrados
@@ -28,7 +35,7 @@ export class FingerprintService {
 
       return dedosRegistrados;
     } catch (error) {
-      throw new BadRequestException(`Error al obtener dedos registrados: ${error.message}`);
+      throw new BadRequestException(`Error al obtener dedos registrados:`);
     }
   }
 
