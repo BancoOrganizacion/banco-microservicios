@@ -349,4 +349,21 @@ async updateRestriccion(
 
   return this.cuentasService.updateRestriccion(id, restriccionId, updateRestriccionDto);
 }
+
+// ENDPOINTS PARA MICROSERVICIOS DE TRANSACCIONES
+
+  
+  // Endpoint para microservicios - Buscar cuenta por ID
+  @MessagePattern('accounts.findById')
+  async findByIdMS(cuentaId: string) {
+    this.logger.debug(`Microservicio: Buscando cuenta con ID: ${cuentaId}`);
+    return this.cuentasService.findOne(cuentaId);
+  }
+
+  // Endpoint para microservicios - Obtener restricciones
+  @MessagePattern('accounts.getRestricciones')
+  async getRestriccionesMS(cuentaId: string) {
+    this.logger.debug(`Microservicio: Obteniendo restricciones de cuenta: ${cuentaId}`);
+    return this.cuentasService.getRestricciones(cuentaId);
+  }
 }

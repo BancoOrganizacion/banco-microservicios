@@ -994,60 +994,6 @@ export class ProxyController {
     return this.handleProxyRequest('transactions', req, res);
   }
 
-  @ApiTags('transacciones')
-  @ApiOperation({ summary: 'Realizar retiro de cuenta usando número de cuenta' })
-  @ApiBearerAuth('JWT-auth')
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        numero_cuenta_origen: {
-          type: 'string',
-          description: 'Número de cuenta origen (10 dígitos)',
-          example: '1234567890',
-          minLength: 10,
-          maxLength: 10
-        },
-        monto: {
-          type: 'number',
-          description: 'Monto a retirar',
-          example: 200.00,
-          minimum: 0.01
-        },
-        descripcion: {
-          type: 'string',
-          description: 'Descripción del retiro',
-          example: 'Retiro en cajero automático'
-        }
-      },
-      required: ['numero_cuenta_origen', 'monto']
-    }
-  })
-  @ApiResponse({ 
-    status: 201, 
-    description: 'Retiro procesado exitosamente',
-    schema: {
-      example: {
-        success: true,
-        message: 'Retiro procesado exitosamente',
-        transaccion: {
-          _id: '507f1f77bcf86cd799439022',
-          numero_transaccion: 'TXN-1234567890-1236',
-          tipo: 'RETIRO',
-          monto: 200.00,
-          estado: 'COMPLETADA',
-          requiere_autenticacion: false,
-          comision: 2.00
-        }
-      }
-    }
-  })
-  @ApiResponse({ status: 400, description: 'Datos inválidos, saldo insuficiente o cuenta no pertenece al usuario' })
-  @ApiResponse({ status: 401, description: 'No autorizado' })
-  @Post('transactions/transacciones/retirar')
-  async retirar(@Req() req: Request, @Res() res: Response) {
-    return this.handleProxyRequest('transactions', req, res);
-  }
 
   @ApiTags('transacciones')
   @ApiOperation({ summary: 'Validar si una transacción es posible usando números de cuenta' })
