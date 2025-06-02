@@ -41,11 +41,25 @@ export class TransactionController {
   constructor(private readonly transactionService: TransactionService) {}
 
   // ============================================
-  // 1. TRANSFERENCIAS - CORREGIDO ✅
+  // 1. TRANSFERENCIAS
   // ============================================
 
-  @ApiOperation({ summary: 'Realizar transferencia entre cuentas' })
-  @ApiBody({ type: TransferirDto })
+  @ApiOperation({ summary: 'Realizar transferencia entre cuentas usando números de cuenta' })
+  @ApiBody({ 
+    type: TransferirDto,
+    description: 'Datos para la transferencia usando números de cuenta de 10 dígitos',
+    examples: {
+      transferencia_ejemplo: {
+        summary: 'Ejemplo de transferencia',
+        value: {
+          numero_cuenta_origen: '1234567890',
+          numero_cuenta_destino: '0987654321',
+          monto: 100.50,
+          descripcion: 'Pago de servicios'
+        }
+      }
+    }
+  })
   @ApiCreatedResponse({
     description: 'Transferencia creada exitosamente',
     schema: {
@@ -69,7 +83,16 @@ export class TransactionController {
       }
     }
   })
-  @ApiBadRequestResponse({ description: 'Datos inválidos o saldo insuficiente' })
+  @ApiBadRequestResponse({ 
+    description: 'Datos inválidos o saldo insuficiente',
+    schema: {
+      example: {
+        statusCode: 400,
+        message: 'Saldo insuficiente para realizar la transferencia',
+        error: 'Bad Request'
+      }
+    }
+  })
   @ApiUnauthorizedResponse({ description: 'No autorizado' })
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtDataGuard)
@@ -78,7 +101,7 @@ export class TransactionController {
     try {
       const usuarioId = req.user?.id_usuario;
       
-      this.logger.debug(`Usuario ${usuarioId} iniciando transferencia`);
+      this.logger.debug(`Usuario ${usuarioId} iniciando transferencia desde ${transferirDto.numero_cuenta_origen} hacia ${transferirDto.numero_cuenta_destino}`);
       
       const transaccion = await this.transactionService.transferir(transferirDto, usuarioId);
       
@@ -95,7 +118,7 @@ export class TransactionController {
           estado: transaccion.estado,
           requiere_autenticacion: transaccion.requiere_autenticacion,
           comision: transaccion.comision,
-          fecha_creacion: transaccion.createdAt // ✅ AHORA FUNCIONA
+          fecha_creacion: transaccion.createdAt
         }
       };
     } catch (error) {
@@ -110,7 +133,31 @@ export class TransactionController {
   @ApiQuery({ name: 'estado', required: false, enum: ['PENDIENTE', 'COMPLETADA', 'FALLIDA', 'CANCELADA'] })
   @ApiQuery({ name: 'page', required: false, description: 'Número de página' })
   @ApiQuery({ name: 'limit', required: false, description: 'Límite por página' })
-  @ApiOkResponse({ description: 'Historial de transferencias obtenido' })
+  @ApiOkResponse({ 
+    description: 'Historial de transferencias obtenido',
+    schema: {
+      example: {
+        transacciones: [
+          {
+            _id: '507f1f77bcf86cd799439020',
+            numero_transaccion: 'TXN-1234567890-1234',
+            tipo: 'TRANSFERENCIA',
+            monto: 100.50,
+            estado: 'COMPLETADA',
+            cuenta_origen_numero: '1234567890',
+            cuenta_destino_numero: '0987654321',
+            fecha_creacion: '2025-06-01T10:30:00.000Z'
+          }
+        ],
+        pagination: {
+          page: 1,
+          limit: 10,
+          total: 1,
+          pages: 1
+        }
+      }
+    }
+  })
   @ApiUnauthorizedResponse({ description: 'No autorizado' })
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtDataGuard)
@@ -125,7 +172,23 @@ export class TransactionController {
 
   @ApiOperation({ summary: 'Obtener detalles de una transferencia específica' })
   @ApiParam({ name: 'id', description: 'ID de la transferencia' })
-  @ApiOkResponse({ description: 'Detalles de la transferencia' })
+  @ApiOkResponse({ 
+    description: 'Detalles de la transferencia',
+    schema: {
+      example: {
+        _id: '507f1f77bcf86cd799439020',
+        numero_transaccion: 'TXN-1234567890-1234',
+        tipo: 'TRANSFERENCIA',
+        monto: 100.50,
+        estado: 'COMPLETADA',
+        cuenta_origen_numero: '1234567890',
+        cuenta_destino_numero: '0987654321',
+        descripcion: 'Pago de servicios',
+        comision: 0.10,
+        fecha_creacion: '2025-06-01T10:30:00.000Z'
+      }
+    }
+  })
   @ApiNotFoundResponse({ description: 'Transferencia no encontrada' })
   @ApiUnauthorizedResponse({ description: 'No autorizado' })
   @ApiBearerAuth('JWT-auth')
@@ -141,8 +204,22 @@ export class TransactionController {
   // 2. DEPÓSITOS Y RETIROS
   // ============================================
 
-  @ApiOperation({ summary: 'Realizar depósito en cuenta' })
-  @ApiBody({ type: DepositarDto })
+  @ApiOperation({ summary: 'Realizar depósito en cuenta usando número de cuenta' })
+  @ApiBody({ 
+    type: DepositarDto,
+    description: 'Datos para el depósito usando número de cuenta de 10 dígitos',
+    examples: {
+      deposito_ejemplo: {
+        summary: 'Ejemplo de depósito',
+        value: {
+          numero_cuenta_destino: '1234567890',
+          monto: 500.00,
+          descripcion: 'Depósito en efectivo',
+          referencia_externa: 'DEP-2024-001'
+        }
+      }
+    }
+  })
   @ApiCreatedResponse({
     description: 'Depósito procesado exitosamente',
     schema: {
@@ -164,7 +241,7 @@ export class TransactionController {
       }
     }
   })
-  @ApiBadRequestResponse({ description: 'Datos inválidos' })
+  @ApiBadRequestResponse({ description: 'Datos inválidos o cuenta no encontrada' })
   @ApiUnauthorizedResponse({ description: 'No autorizado' })
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtDataGuard)
@@ -173,7 +250,7 @@ export class TransactionController {
     try {
       const usuarioId = req.user?.id_usuario;
       
-      this.logger.debug(`Usuario ${usuarioId} realizando depósito`);
+      this.logger.debug(`Usuario ${usuarioId} realizando depósito en cuenta ${depositarDto.numero_cuenta_destino}`);
       
       const transaccion = await this.transactionService.depositar(depositarDto, usuarioId);
       
@@ -195,8 +272,21 @@ export class TransactionController {
     }
   }
 
-  @ApiOperation({ summary: 'Realizar retiro de cuenta' })
-  @ApiBody({ type: RetirarDto })
+  @ApiOperation({ summary: 'Realizar retiro de cuenta usando número de cuenta' })
+  @ApiBody({ 
+    type: RetirarDto,
+    description: 'Datos para el retiro usando número de cuenta de 10 dígitos',
+    examples: {
+      retiro_ejemplo: {
+        summary: 'Ejemplo de retiro',
+        value: {
+          numero_cuenta_origen: '1234567890',
+          monto: 200.00,
+          descripcion: 'Retiro en cajero automático'
+        }
+      }
+    }
+  })
   @ApiCreatedResponse({
     description: 'Retiro procesado exitosamente',
     schema: {
@@ -219,7 +309,7 @@ export class TransactionController {
       }
     }
   })
-  @ApiBadRequestResponse({ description: 'Datos inválidos o saldo insuficiente' })
+  @ApiBadRequestResponse({ description: 'Datos inválidos, saldo insuficiente o cuenta no pertenece al usuario' })
   @ApiUnauthorizedResponse({ description: 'No autorizado' })
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtDataGuard)
@@ -228,7 +318,7 @@ export class TransactionController {
     try {
       const usuarioId = req.user?.id_usuario;
       
-      this.logger.debug(`Usuario ${usuarioId} realizando retiro`);
+      this.logger.debug(`Usuario ${usuarioId} realizando retiro de cuenta ${retirarDto.cuenta_origen}`);
       
       const transaccion = await this.transactionService.retirar(retirarDto, usuarioId);
       
@@ -259,7 +349,31 @@ export class TransactionController {
   @ApiQuery({ name: 'estado', required: false })
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'limit', required: false })
-  @ApiOkResponse({ description: 'Historial de retiros obtenido' })
+  @ApiOkResponse({ 
+    description: 'Historial de retiros obtenido',
+    schema: {
+      example: {
+        transacciones: [
+          {
+            _id: '507f1f77bcf86cd799439022',
+            numero_transaccion: 'TXN-1234567890-1236',
+            tipo: 'RETIRO',
+            monto: 200.00,
+            estado: 'COMPLETADA',
+            cuenta_origen_numero: '1234567890',
+            comision: 2.00,
+            fecha_creacion: '2025-06-01T10:40:00.000Z'
+          }
+        ],
+        pagination: {
+          page: 1,
+          limit: 10,
+          total: 1,
+          pages: 1
+        }
+      }
+    }
+  })
   @ApiUnauthorizedResponse({ description: 'No autorizado' })
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtDataGuard)
@@ -271,11 +385,11 @@ export class TransactionController {
   }
 
   // ============================================
-  // 3. CONSULTAS Y SALDOS - CORREGIDO ✅
+  // 3. CONSULTAS Y SALDOS
   // ============================================
 
-  @ApiOperation({ summary: 'Obtener movimientos de una cuenta' })
-  @ApiParam({ name: 'cuentaId', description: 'ID de la cuenta' })
+  @ApiOperation({ summary: 'Obtener movimientos de una cuenta por ID' })
+  @ApiParam({ name: 'cuentaId', description: 'ID interno de la cuenta' })
   @ApiOkResponse({
     description: 'Movimientos de la cuenta',
     schema: {
@@ -308,8 +422,6 @@ export class TransactionController {
   @UseGuards(JwtDataGuard)
   @Get('movimientos/:cuentaId')
   async obtenerMovimientos(@Param('cuentaId') cuentaId: string, @Request() req) {
-    // TODO: Validar que el usuario tenga acceso a esta cuenta
-    
     this.logger.debug(`Obteniendo movimientos de cuenta ${cuentaId}`);
     
     const movimientos = await this.transactionService.obtenerMovimientosCuenta(cuentaId);
@@ -324,36 +436,31 @@ export class TransactionController {
         monto: mov.monto,
         descripcion: mov.descripcion,
         estado: mov.estado,
-        fecha: mov.createdAt, // ✅ AHORA FUNCIONA
+        fecha: mov.createdAt,
         comision: mov.comision
       }))
     };
   }
 
-  @ApiOperation({ summary: 'Consultar saldo actual de una cuenta' })
-  @ApiParam({ name: 'cuentaId', description: 'ID de la cuenta' })
+  @ApiOperation({ summary: 'Consultar saldo actual de una cuenta por ID' })
+  @ApiParam({ name: 'cuentaId', description: 'ID interno de la cuenta' })
   @ApiOkResponse({
     description: 'Información del saldo',
     schema: {
-      type: 'object',
-      properties: {
-        cuenta_id: { type: 'string' },
-        numero_cuenta: { type: 'string' },
-        saldo_actual: { type: 'number' },
-        fecha_ultimo_movimiento: { type: 'string', format: 'date-time' },
-        ultimos_movimientos: { 
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              _id: { type: 'string' },
-              numero_transaccion: { type: 'string' },
-              tipo: { type: 'string' },
-              monto: { type: 'number' },
-              fecha: { type: 'string', format: 'date-time' }
-            }
+      example: {
+        cuenta_id: '507f1f77bcf86cd799439011',
+        numero_cuenta: '1234567890',
+        saldo_actual: 1500.75,
+        fecha_ultimo_movimiento: '2025-06-01T10:30:00.000Z',
+        ultimos_movimientos: [
+          {
+            _id: '507f1f77bcf86cd799439020',
+            numero_transaccion: 'TXN-1234567890-1234',
+            tipo: 'TRANSFERENCIA',
+            monto: 100.50,
+            fecha: '2025-06-01T10:30:00.000Z'
           }
-        }
+        ]
       }
     }
   })
@@ -363,8 +470,6 @@ export class TransactionController {
   @UseGuards(JwtDataGuard)
   @Get('saldo/:cuentaId')
   async consultarSaldo(@Param('cuentaId') cuentaId: string, @Request() req) {
-    // TODO: Validar que el usuario tenga acceso a esta cuenta
-    
     this.logger.debug(`Consultando saldo de cuenta ${cuentaId}`);
     
     return this.transactionService.consultarSaldo(cuentaId);
@@ -374,35 +479,49 @@ export class TransactionController {
   // 4. VALIDACIÓN Y AUTORIZACIÓN
   // ============================================
 
-  @ApiOperation({ summary: 'Validar si una transacción es posible' })
-  @ApiBody({ type: ValidarTransaccionDto })
-  @ApiOkResponse({
-    description: 'Resultado de la validación',
-    schema: {
-      type: 'object',
-      properties: {
-        es_valida: { type: 'boolean' },
-        validaciones: {
-          type: 'object',
-          properties: {
-            saldo_suficiente: { type: 'boolean' },
-            cuenta_activa: { type: 'boolean' },
-            monto_valido: { type: 'boolean' },
-            comision_calculada: { type: 'number' },
-            monto_total: { type: 'number' }
-          }
-        },
-        restricciones: {
-          type: 'object',
-          properties: {
-            requiere_autenticacion: { type: 'boolean' },
-            patron_requerido: { type: 'string', nullable: true }
-          }
+  @ApiOperation({ summary: 'Validar si una transacción es posible usando números de cuenta' })
+  @ApiBody({ 
+    type: ValidarTransaccionDto,
+    examples: {
+      validacion_transferencia: {
+        summary: 'Validar transferencia',
+        value: {
+          numero_cuenta_origen: '1234567890',
+          numero_cuenta_destino: '0987654321',
+          monto: 1500.00,
+          tipo: 'TRANSFERENCIA'
+        }
+      },
+      validacion_retiro: {
+        summary: 'Validar retiro',
+        value: {
+          numero_cuenta_origen: '1234567890',
+          monto: 200.00,
+          tipo: 'RETIRO'
         }
       }
     }
   })
-  @ApiBadRequestResponse({ description: 'Datos inválidos' })
+  @ApiOkResponse({
+    description: 'Resultado de la validación',
+    schema: {
+      example: {
+        es_valida: true,
+        validaciones: {
+          saldo_suficiente: true,
+          cuenta_activa: true,
+          monto_valido: true,
+          comision_calculada: 1.50,
+          monto_total: 1501.50
+        },
+        restricciones: {
+          requiere_autenticacion: true,
+          patron_requerido: '507f1f77bcf86cd799439030'
+        }
+      }
+    }
+  })
+  @ApiBadRequestResponse({ description: 'Datos inválidos o cuenta no encontrada' })
   @ApiUnauthorizedResponse({ description: 'No autorizado' })
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtDataGuard)
@@ -445,11 +564,6 @@ export class TransactionController {
     try {
       this.logger.debug(`Autorizando transacción ${autorizarDto.transaccion_id}`);
       
-      // TODO: Aquí iría la validación biométrica con patterns service
-      // const validacionBiometrica = await this.patternsService.validarPatron(
-      //   autorizarDto.patron_autenticacion_id
-      // );
-      
       const transaccion = await this.transactionService.autorizarTransaccion(autorizarDto);
       
       return {
@@ -469,27 +583,22 @@ export class TransactionController {
     }
   }
 
-  @ApiOperation({ summary: 'Verificar restricciones para un monto en una cuenta' })
-  @ApiParam({ name: 'cuentaId', description: 'ID de la cuenta' })
+  @ApiOperation({ summary: 'Verificar restricciones para un monto usando número de cuenta' })
+  @ApiParam({ name: 'numeroCuenta', description: 'Número de cuenta (10 dígitos)' })
   @ApiParam({ name: 'monto', description: 'Monto a verificar' })
   @ApiOkResponse({
     description: 'Información sobre restricciones aplicables',
     schema: {
-      type: 'object',
-      properties: {
-        cuenta_id: { type: 'string' },
-        monto_consultado: { type: 'number' },
-        requiere_autenticacion: { type: 'boolean' },
+      example: {
+        numero_cuenta: '1234567890',
+        monto_consultado: 1500.00,
+        requiere_autenticacion: true,
         restriccion_aplicable: {
-          type: 'object',
-          nullable: true,
-          properties: {
-            monto_desde: { type: 'number' },
-            monto_hasta: { type: 'number' },
-            patron_autenticacion: { type: 'string', nullable: true }
-          }
+          monto_desde: 1000,
+          monto_hasta: 5000,
+          patron_autenticacion: '507f1f77bcf86cd799439030'
         },
-        patron_requerido: { type: 'string', nullable: true }
+        patron_requerido: '507f1f77bcf86cd799439030'
       }
     }
   })
@@ -497,9 +606,9 @@ export class TransactionController {
   @ApiUnauthorizedResponse({ description: 'No autorizado' })
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtDataGuard)
-  @Get('restricciones/:cuentaId/:monto')
+  @Get('restricciones/:numeroCuenta/:monto')
   async verificarRestricciones(
-    @Param('cuentaId') cuentaId: string,
+    @Param('numeroCuenta') numeroCuenta: string,
     @Param('monto') monto: string
   ) {
     const montoNumerico = parseFloat(monto);
@@ -508,12 +617,18 @@ export class TransactionController {
       throw new BadRequestException('El monto debe ser un número válido mayor a 0');
     }
     
-    this.logger.debug(`Verificando restricciones para cuenta ${cuentaId}, monto ${montoNumerico}`);
+    if (!/^\d{10}$/.test(numeroCuenta)) {
+      throw new BadRequestException('El número de cuenta debe tener exactamente 10 dígitos');
+    }
     
-    const restricciones = await this.transactionService.verificarRestricciones(cuentaId, montoNumerico);
+    this.logger.debug(`Verificando restricciones para cuenta ${numeroCuenta}, monto ${montoNumerico}`);
+    
+    // Primero obtenemos la cuenta por número para obtener su ID
+    const cuenta = await this.transactionService['obtenerCuentaPorNumero'](numeroCuenta);
+    const restricciones = await this.transactionService.verificarRestricciones(cuenta._id.toString(), montoNumerico);
     
     return {
-      cuenta_id: cuentaId,
+      numero_cuenta: numeroCuenta,
       monto_consultado: montoNumerico,
       ...restricciones
     };

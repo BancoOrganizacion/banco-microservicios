@@ -19,7 +19,6 @@ export class TransactionService {
     @InjectModel(Transaccion.name) private transaccionModel: Model<Transaccion>,
     @Inject('ACCOUNTS_SERVICE') private readonly accountsClient: ClientProxy,
     @Inject('AUTH_SERVICE') private readonly authClient: ClientProxy,
-    // @Inject('PATTERNS_SERVICE') private readonly patternsClient: ClientProxy, // Para validación biométrica
   ) {}
 
   /**
@@ -33,9 +32,24 @@ export class TransactionService {
   }
 
   /**
-   * Obtiene información de una cuenta desde el microservicio de cuentas
+   * Obtiene información de una cuenta desde el microservicio de cuentas por número de cuenta
    */
-  private async obtenerCuenta(cuentaId: string): Promise<any> {
+  private async obtenerCuentaPorNumero(numeroCuenta: string): Promise<any> {
+    try {
+      this.logger.debug(`Buscando cuenta con número: ${numeroCuenta}`);
+      return await firstValueFrom(
+        this.accountsClient.send('accounts.findByNumeroCuenta', numeroCuenta)
+      );
+    } catch (error) {
+      this.logger.error(`Error al buscar cuenta ${numeroCuenta}: ${error.message}`);
+      throw new NotFoundException(`Cuenta con número ${numeroCuenta} no encontrada`);
+    }
+  }
+
+  /**
+   * Obtiene información de una cuenta por ID (para uso interno)
+   */
+  private async obtenerCuentaPorId(cuentaId: string): Promise<any> {
     try {
       return await firstValueFrom(
         this.accountsClient.send('accounts.findById', cuentaId)
@@ -67,12 +81,18 @@ export class TransactionService {
   async transferir(transferirDto: TransferirDto, usuarioId: string): Promise<Transaccion> {
     this.logger.debug(`Iniciando transferencia: ${JSON.stringify(transferirDto)}`);
 
-    if (transferirDto.cuenta_origen === transferirDto.cuenta_destino) {
+    if (transferirDto.numero_cuenta_origen === transferirDto.numero_cuenta_destino) {
       throw new BadRequestException('La cuenta origen y destino no pueden ser la misma');
     }
 
-    const cuentaOrigen = await this.obtenerCuenta(transferirDto.cuenta_origen);
-    const cuentaDestino = await this.obtenerCuenta(transferirDto.cuenta_destino);
+    // Buscar cuentas por número de cuenta
+    const cuentaOrigen = await this.obtenerCuentaPorNumero(transferirDto.numero_cuenta_origen);
+    const cuentaDestino = await this.obtenerCuentaPorNumero(transferirDto.numero_cuenta_destino);
+
+    // Verificar que el usuario es propietario de la cuenta origen
+    if (cuentaOrigen.titular.toString() !== usuarioId) {
+      throw new BadRequestException('No tienes permiso para usar esta cuenta origen');
+    }
 
     const comision = this.calcularComision(TipoTransaccion.TRANSFERENCIA, transferirDto.monto);
     const montoTotal = transferirDto.monto + comision;
@@ -82,7 +102,7 @@ export class TransactionService {
     }
 
     const restriccionesValidas = await this.verificarRestricciones(
-      transferirDto.cuenta_origen, 
+      cuentaOrigen._id.toString(), 
       transferirDto.monto
     );
 
@@ -92,8 +112,8 @@ export class TransactionService {
       numero_transaccion: numeroTransaccion,
       tipo: TipoTransaccion.TRANSFERENCIA,
       monto: transferirDto.monto,
-      cuenta_origen: transferirDto.cuenta_origen,
-      cuenta_destino: transferirDto.cuenta_destino,
+      cuenta_origen: cuentaOrigen._id, // Guardamos el ObjectId internamente
+      cuenta_destino: cuentaDestino._id, // Guardamos el ObjectId internamente
       descripcion: transferirDto.descripcion || 'Transferencia entre cuentas',
       estado: restriccionesValidas.requiere_autenticacion ? 
         EstadoTransaccion.PENDIENTE : EstadoTransaccion.AUTORIZADA,
@@ -117,7 +137,7 @@ export class TransactionService {
   async depositar(depositarDto: DepositarDto, usuarioId: string): Promise<Transaccion> {
     this.logger.debug(`Iniciando depósito: ${JSON.stringify(depositarDto)}`);
 
-    const cuentaDestino = await this.obtenerCuenta(depositarDto.cuenta_destino);
+    const cuentaDestino = await this.obtenerCuentaPorNumero(depositarDto.numero_cuenta_destino);
 
     const numeroTransaccion = await this.generarNumeroTransaccion();
     
@@ -125,7 +145,7 @@ export class TransactionService {
       numero_transaccion: numeroTransaccion,
       tipo: TipoTransaccion.DEPOSITO,
       monto: depositarDto.monto,
-      cuenta_origen: depositarDto.cuenta_destino,
+      cuenta_origen: cuentaDestino._id, // Para depósitos, origen y destino son la misma cuenta
       descripcion: depositarDto.descripcion || 'Depósito en cuenta',
       estado: EstadoTransaccion.AUTORIZADA,
       comision: 0,
@@ -146,7 +166,12 @@ export class TransactionService {
   async retirar(retirarDto: RetirarDto, usuarioId: string): Promise<Transaccion> {
     this.logger.debug(`Iniciando retiro: ${JSON.stringify(retirarDto)}`);
 
-    const cuentaOrigen = await this.obtenerCuenta(retirarDto.cuenta_origen);
+    const cuentaOrigen = await this.obtenerCuentaPorNumero(retirarDto.cuenta_origen);
+
+    // Verificar que el usuario es propietario de la cuenta
+    if (cuentaOrigen.titular.toString() !== usuarioId) {
+      throw new BadRequestException('No tienes permiso para usar esta cuenta');
+    }
 
     const comision = this.calcularComision(TipoTransaccion.RETIRO, retirarDto.monto);
     const montoTotal = retirarDto.monto + comision;
@@ -156,7 +181,7 @@ export class TransactionService {
     }
 
     const restriccionesValidas = await this.verificarRestricciones(
-      retirarDto.cuenta_origen, 
+      cuentaOrigen._id.toString(), 
       retirarDto.monto
     );
 
@@ -166,7 +191,7 @@ export class TransactionService {
       numero_transaccion: numeroTransaccion,
       tipo: TipoTransaccion.RETIRO,
       monto: retirarDto.monto,
-      cuenta_origen: retirarDto.cuenta_origen,
+      cuenta_origen: cuentaOrigen._id,
       descripcion: retirarDto.descripcion || 'Retiro de cuenta',
       estado: restriccionesValidas.requiere_autenticacion ? 
         EstadoTransaccion.PENDIENTE : EstadoTransaccion.AUTORIZADA,
@@ -182,6 +207,44 @@ export class TransactionService {
     }
 
     return transaccionGuardada;
+  }
+
+  /**
+   * VALIDACIÓN Y AUTORIZACIÓN
+   */
+  async validarTransaccion(validarDto: ValidarTransaccionDto): Promise<any> {
+    this.logger.debug(`Validando transacción: ${JSON.stringify(validarDto)}`);
+
+    const cuentaOrigen = await this.obtenerCuentaPorNumero(validarDto.numero_cuenta_origen);
+
+    const tipoTransaccion = validarDto.tipo as TipoTransaccion;
+    const comision = this.calcularComision(tipoTransaccion, validarDto.monto);
+    const montoTotal = validarDto.monto + comision;
+
+    const validaciones = {
+      saldo_suficiente: cuentaOrigen.monto_actual >= montoTotal,
+      cuenta_activa: cuentaOrigen.estado === 'ACTIVA',
+      monto_valido: validarDto.monto > 0,
+      comision_calculada: comision,
+      monto_total: montoTotal
+    };
+
+    const restricciones = await this.verificarRestricciones(
+      cuentaOrigen._id.toString(),
+      validarDto.monto
+    );
+
+    if (validarDto.numero_cuenta_destino) {
+      const cuentaDestino = await this.obtenerCuentaPorNumero(validarDto.numero_cuenta_destino);
+      validaciones['cuenta_destino_activa'] = cuentaDestino.estado === 'ACTIVA';
+    }
+
+    return {
+      es_valida: Object.values(validaciones).every(v => v === true),
+      validaciones,
+      restricciones,
+      requiere_autenticacion: restricciones.requiere_autenticacion
+    };
   }
 
   /**
@@ -212,13 +275,27 @@ export class TransactionService {
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(query.limit)
-        .populate('cuenta_origen cuenta_destino')
         .exec(),
       this.transaccionModel.countDocuments(filtros)
     ]);
 
+    // Enriquecer las transacciones con información de las cuentas
+    const transaccionesEnriquecidas = await Promise.all(
+      transacciones.map(async (transaccion) => {
+        const cuentaOrigen = await this.obtenerCuentaPorId(transaccion.cuenta_origen.toString());
+        const cuentaDestino = transaccion.cuenta_destino ? 
+          await this.obtenerCuentaPorId(transaccion.cuenta_destino.toString()) : null;
+
+        return {
+          ...transaccion.toObject(),
+          cuenta_origen_numero: cuentaOrigen.numero_cuenta,
+          cuenta_destino_numero: cuentaDestino?.numero_cuenta || null
+        };
+      })
+    );
+
     return {
-      transacciones,
+      transacciones: transaccionesEnriquecidas,
       pagination: {
         page: query.page,
         limit: query.limit,
@@ -228,21 +305,29 @@ export class TransactionService {
     };
   }
 
-  async obtenerTransferenciaPorId(id: string, usuarioId: string): Promise<Transaccion> {
+  async obtenerTransferenciaPorId(id: string, usuarioId: string): Promise<any> {
     const transferencia = await this.transaccionModel
       .findOne({
         _id: id,
         tipo: TipoTransaccion.TRANSFERENCIA,
         usuario_ejecutor: usuarioId
       })
-      .populate('cuenta_origen cuenta_destino')
       .exec();
 
     if (!transferencia) {
       throw new NotFoundException(`Transferencia con ID ${id} no encontrada`);
     }
 
-    return transferencia;
+    // Enriquecer con información de las cuentas
+    const cuentaOrigen = await this.obtenerCuentaPorId(transferencia.cuenta_origen.toString());
+    const cuentaDestino = transferencia.cuenta_destino ? 
+      await this.obtenerCuentaPorId(transferencia.cuenta_destino.toString()) : null;
+
+    return {
+      ...transferencia.toObject(),
+      cuenta_origen_numero: cuentaOrigen.numero_cuenta,
+      cuenta_destino_numero: cuentaDestino?.numero_cuenta || null
+    };
   }
 
   async obtenerRetiros(usuarioId: string, query: QueryTransaccionesDto): Promise<any> {
@@ -259,13 +344,23 @@ export class TransactionService {
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(query.limit)
-        .populate('cuenta_origen')
         .exec(),
       this.transaccionModel.countDocuments(filtros)
     ]);
 
+    // Enriquecer con información de las cuentas
+    const transaccionesEnriquecidas = await Promise.all(
+      transacciones.map(async (transaccion) => {
+        const cuentaOrigen = await this.obtenerCuentaPorId(transaccion.cuenta_origen.toString());
+        return {
+          ...transaccion.toObject(),
+          cuenta_origen_numero: cuentaOrigen.numero_cuenta
+        };
+      })
+    );
+
     return {
-      transacciones,
+      transacciones: transaccionesEnriquecidas,
       pagination: {
         page: query.page,
         limit: query.limit,
@@ -290,7 +385,7 @@ export class TransactionService {
   }
 
   async consultarSaldo(cuentaId: string): Promise<any> {
-    const cuenta = await this.obtenerCuenta(cuentaId);
+    const cuenta = await this.obtenerCuentaPorId(cuentaId);
     const movimientos = await this.obtenerMovimientosCuenta(cuentaId);
 
     return {
@@ -299,44 +394,6 @@ export class TransactionService {
       saldo_actual: cuenta.monto_actual,
       fecha_ultimo_movimiento: cuenta.fecha_ultimo_movimiento,
       ultimos_movimientos: movimientos.slice(0, 5)
-    };
-  }
-
-  /**
-   * VALIDACIÓN Y AUTORIZACIÓN
-   */
-  async validarTransaccion(validarDto: ValidarTransaccionDto): Promise<any> {
-    this.logger.debug(`Validando transacción: ${JSON.stringify(validarDto)}`);
-
-    const cuentaOrigen = await this.obtenerCuenta(validarDto.cuenta_origen);
-
-    const tipoTransaccion = validarDto.tipo as TipoTransaccion;
-    const comision = this.calcularComision(tipoTransaccion, validarDto.monto);
-    const montoTotal = validarDto.monto + comision;
-
-    const validaciones = {
-      saldo_suficiente: cuentaOrigen.monto_actual >= montoTotal,
-      cuenta_activa: cuentaOrigen.estado === 'ACTIVA',
-      monto_valido: validarDto.monto > 0,
-      comision_calculada: comision,
-      monto_total: montoTotal
-    };
-
-    const restricciones = await this.verificarRestricciones(
-      validarDto.cuenta_origen,
-      validarDto.monto
-    );
-
-    if (validarDto.cuenta_destino) {
-      const cuentaDestino = await this.obtenerCuenta(validarDto.cuenta_destino);
-      validaciones['cuenta_destino_activa'] = cuentaDestino.estado === 'ACTIVA';
-    }
-
-    return {
-      es_valida: Object.values(validaciones).every(v => v === true),
-      validaciones,
-      restricciones,
-      requiere_autenticacion: restricciones.requiere_autenticacion
     };
   }
 
@@ -352,21 +409,6 @@ export class TransactionService {
     if (transaccion.estado !== EstadoTransaccion.PENDIENTE) {
       throw new BadRequestException('La transacción no está en estado pendiente');
     }
-
-    // TODO: Validar código de verificación con auth service
-    // const codigoValido = await firstValueFrom(
-    //   this.authClient.send('auth.validateCode', {
-    //     userId: transaccion.usuario_ejecutor,
-    //     code: autorizarDto.codigo_verificacion
-    //   })
-    // );
-
-    // TODO: Si hay patrón biométrico, validarlo con patterns service
-    // if (autorizarDto.patron_autenticacion_id) {
-    //   const patronValido = await firstValueFrom(
-    //     this.patternsClient.send('patterns.validate', autorizarDto.patron_autenticacion_id)
-    //   );
-    // }
 
     transaccion.estado = EstadoTransaccion.AUTORIZADA;
     transaccion.fecha_autorizacion = new Date();

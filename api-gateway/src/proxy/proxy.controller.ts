@@ -23,7 +23,8 @@ import {
   ApiBearerAuth,
   ApiResponse,
   ApiBody,
-  ApiHeader
+  ApiHeader,
+  ApiQuery
 } from '@nestjs/swagger';
 
 // Definimos un decorador para todos los métodos HTTP comunes
@@ -797,22 +798,26 @@ export class ProxyController {
 
   // ========================= ENDPOINTS DE TRANSACCIONES =========================
   
-  @ApiTags('transacciones')
-  @ApiOperation({ summary: 'Realizar transferencia entre cuentas' })
+   @ApiTags('transacciones')
+  @ApiOperation({ summary: 'Realizar transferencia entre cuentas usando números de cuenta' })
   @ApiBearerAuth('JWT-auth')
   @ApiBody({
     schema: {
       type: 'object',
       properties: {
-        cuenta_origen: {
+        numero_cuenta_origen: {
           type: 'string',
-          description: 'ID de la cuenta origen',
-          example: '507f1f77bcf86cd799439011'
+          description: 'Número de cuenta origen (10 dígitos)',
+          example: '1234567890',
+          minLength: 10,
+          maxLength: 10
         },
-        cuenta_destino: {
+        numero_cuenta_destino: {
           type: 'string',
-          description: 'ID de la cuenta destino',
-          example: '507f1f77bcf86cd799439012'
+          description: 'Número de cuenta destino (10 dígitos)',
+          example: '0987654321',
+          minLength: 10,
+          maxLength: 10
         },
         monto: {
           type: 'number',
@@ -826,7 +831,7 @@ export class ProxyController {
           example: 'Pago de servicios'
         }
       },
-      required: ['cuenta_origen', 'cuenta_destino', 'monto']
+      required: ['numero_cuenta_origen', 'numero_cuenta_destino', 'monto']
     }
   })
   @ApiResponse({ 
@@ -849,7 +854,17 @@ export class ProxyController {
       }
     }
   })
-  @ApiResponse({ status: 400, description: 'Datos inválidos o saldo insuficiente' })
+  @ApiResponse({ 
+    status: 400, 
+    description: 'Datos inválidos o saldo insuficiente',
+    schema: {
+      example: {
+        statusCode: 400,
+        message: 'Saldo insuficiente para realizar la transferencia',
+        error: 'Bad Request'
+      }
+    }
+  })
   @ApiResponse({ status: 401, description: 'No autorizado' })
   @Post('transactions/transacciones/transferir')
   async transferir(@Req() req: Request, @Res() res: Response) {
@@ -871,6 +886,8 @@ export class ProxyController {
             tipo: 'TRANSFERENCIA',
             monto: 100.50,
             estado: 'COMPLETADA',
+            cuenta_origen_numero: '1234567890',
+            cuenta_destino_numero: '0987654321',
             fecha_creacion: '2025-06-01T10:30:00.000Z'
           }
         ],
@@ -893,7 +910,24 @@ export class ProxyController {
   @ApiOperation({ summary: 'Obtener detalles de una transferencia específica' })
   @ApiParam({ name: 'id', description: 'ID de la transferencia' })
   @ApiBearerAuth('JWT-auth')
-  @ApiResponse({ status: 200, description: 'Detalles de la transferencia' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Detalles de la transferencia',
+    schema: {
+      example: {
+        _id: '507f1f77bcf86cd799439020',
+        numero_transaccion: 'TXN-1234567890-1234',
+        tipo: 'TRANSFERENCIA',
+        monto: 100.50,
+        estado: 'COMPLETADA',
+        cuenta_origen_numero: '1234567890',
+        cuenta_destino_numero: '0987654321',
+        descripcion: 'Pago de servicios',
+        comision: 0.10,
+        fecha_creacion: '2025-06-01T10:30:00.000Z'
+      }
+    }
+  })
   @ApiResponse({ status: 404, description: 'Transferencia no encontrada' })
   @ApiResponse({ status: 401, description: 'No autorizado' })
   @Get('transactions/transacciones/transferencias/:id')
@@ -902,16 +936,18 @@ export class ProxyController {
   }
 
   @ApiTags('transacciones')
-  @ApiOperation({ summary: 'Realizar depósito en cuenta' })
+  @ApiOperation({ summary: 'Realizar depósito en cuenta usando número de cuenta' })
   @ApiBearerAuth('JWT-auth')
   @ApiBody({
     schema: {
       type: 'object',
       properties: {
-        cuenta_destino: {
+        numero_cuenta_destino: {
           type: 'string',
-          description: 'ID de la cuenta destino',
-          example: '507f1f77bcf86cd799439011'
+          description: 'Número de cuenta destino (10 dígitos)',
+          example: '1234567890',
+          minLength: 10,
+          maxLength: 10
         },
         monto: {
           type: 'number',
@@ -930,7 +966,7 @@ export class ProxyController {
           example: 'DEP-2024-001'
         }
       },
-      required: ['cuenta_destino', 'monto']
+      required: ['numero_cuenta_destino', 'monto']
     }
   })
   @ApiResponse({ 
@@ -951,7 +987,7 @@ export class ProxyController {
       }
     }
   })
-  @ApiResponse({ status: 400, description: 'Datos inválidos' })
+  @ApiResponse({ status: 400, description: 'Datos inválidos o cuenta no encontrada' })
   @ApiResponse({ status: 401, description: 'No autorizado' })
   @Post('transactions/transacciones/depositar')
   async depositar(@Req() req: Request, @Res() res: Response) {
@@ -959,16 +995,18 @@ export class ProxyController {
   }
 
   @ApiTags('transacciones')
-  @ApiOperation({ summary: 'Realizar retiro de cuenta' })
+  @ApiOperation({ summary: 'Realizar retiro de cuenta usando número de cuenta' })
   @ApiBearerAuth('JWT-auth')
   @ApiBody({
     schema: {
       type: 'object',
       properties: {
-        cuenta_origen: {
+        numero_cuenta_origen: {
           type: 'string',
-          description: 'ID de la cuenta origen',
-          example: '507f1f77bcf86cd799439011'
+          description: 'Número de cuenta origen (10 dígitos)',
+          example: '1234567890',
+          minLength: 10,
+          maxLength: 10
         },
         monto: {
           type: 'number',
@@ -982,7 +1020,7 @@ export class ProxyController {
           example: 'Retiro en cajero automático'
         }
       },
-      required: ['cuenta_origen', 'monto']
+      required: ['numero_cuenta_origen', 'monto']
     }
   })
   @ApiResponse({ 
@@ -1004,7 +1042,7 @@ export class ProxyController {
       }
     }
   })
-  @ApiResponse({ status: 400, description: 'Datos inválidos o saldo insuficiente' })
+  @ApiResponse({ status: 400, description: 'Datos inválidos, saldo insuficiente o cuenta no pertenece al usuario' })
   @ApiResponse({ status: 401, description: 'No autorizado' })
   @Post('transactions/transacciones/retirar')
   async retirar(@Req() req: Request, @Res() res: Response) {
@@ -1012,115 +1050,18 @@ export class ProxyController {
   }
 
   @ApiTags('transacciones')
-  @ApiOperation({ summary: 'Historial de retiros' })
-  @ApiBearerAuth('JWT-auth')
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Historial de retiros obtenido',
-    schema: {
-      example: {
-        transacciones: [
-          {
-            _id: '507f1f77bcf86cd799439022',
-            numero_transaccion: 'TXN-1234567890-1236',
-            tipo: 'RETIRO',
-            monto: 200.00,
-            estado: 'COMPLETADA',
-            comision: 2.00,
-            fecha_creacion: '2025-06-01T10:40:00.000Z'
-          }
-        ],
-        pagination: {
-          page: 1,
-          limit: 10,
-          total: 1,
-          pages: 1
-        }
-      }
-    }
-  })
-  @ApiResponse({ status: 401, description: 'No autorizado' })
-  @Get('transactions/transacciones/retiros')
-  async obtenerRetiros(@Req() req: Request, @Res() res: Response) {
-    return this.handleProxyRequest('transactions', req, res);
-  }
-
-  @ApiTags('transacciones')
-  @ApiOperation({ summary: 'Obtener movimientos de una cuenta' })
-  @ApiParam({ name: 'cuentaId', description: 'ID de la cuenta' })
-  @ApiBearerAuth('JWT-auth')
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Movimientos de la cuenta',
-    schema: {
-      example: {
-        cuenta_id: '507f1f77bcf86cd799439011',
-        total_movimientos: 3,
-        movimientos: [
-          {
-            _id: '507f1f77bcf86cd799439020',
-            numero_transaccion: 'TXN-1234567890-1234',
-            tipo: 'TRANSFERENCIA',
-            monto: 100.50,
-            descripcion: 'Pago de servicios',
-            estado: 'COMPLETADA',
-            fecha: '2025-06-01T10:30:00.000Z',
-            comision: 0.10
-          }
-        ]
-      }
-    }
-  })
-  @ApiResponse({ status: 404, description: 'Cuenta no encontrada' })
-  @ApiResponse({ status: 401, description: 'No autorizado' })
-  @Get('transactions/transacciones/movimientos/:cuentaId')
-  async obtenerMovimientos(@Req() req: Request, @Res() res: Response) {
-    return this.handleProxyRequest('transactions', req, res);
-  }
-
-  @ApiTags('transacciones')
-  @ApiOperation({ summary: 'Consultar saldo actual de una cuenta' })
-  @ApiParam({ name: 'cuentaId', description: 'ID de la cuenta' })
-  @ApiBearerAuth('JWT-auth')
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Información del saldo',
-    schema: {
-      example: {
-        cuenta_id: '507f1f77bcf86cd799439011',
-        numero_cuenta: '1234567890',
-        saldo_actual: 1500.75,
-        fecha_ultimo_movimiento: '2025-06-01T10:30:00.000Z',
-        ultimos_movimientos: [
-          {
-            _id: '507f1f77bcf86cd799439020',
-            numero_transaccion: 'TXN-1234567890-1234',
-            tipo: 'TRANSFERENCIA',
-            monto: 100.50,
-            fecha: '2025-06-01T10:30:00.000Z'
-          }
-        ]
-      }
-    }
-  })
-  @ApiResponse({ status: 404, description: 'Cuenta no encontrada' })
-  @ApiResponse({ status: 401, description: 'No autorizado' })
-  @Get('transactions/transacciones/saldo/:cuentaId')
-  async consultarSaldo(@Req() req: Request, @Res() res: Response) {
-    return this.handleProxyRequest('transactions', req, res);
-  }
-
-  @ApiTags('transacciones')
-  @ApiOperation({ summary: 'Validar si una transacción es posible' })
+  @ApiOperation({ summary: 'Validar si una transacción es posible usando números de cuenta' })
   @ApiBearerAuth('JWT-auth')
   @ApiBody({
     schema: {
       type: 'object',
       properties: {
-        cuenta_origen: {
+        numero_cuenta_origen: {
           type: 'string',
-          description: 'ID de la cuenta origen',
-          example: '507f1f77bcf86cd799439011'
+          description: 'Número de cuenta origen (10 dígitos)',
+          example: '1234567890',
+          minLength: 10,
+          maxLength: 10
         },
         monto: {
           type: 'number',
@@ -1128,10 +1069,12 @@ export class ProxyController {
           example: 1500.00,
           minimum: 0.01
         },
-        cuenta_destino: {
+        numero_cuenta_destino: {
           type: 'string',
-          description: 'ID de la cuenta destino (solo para transferencias)',
-          example: '507f1f77bcf86cd799439012'
+          description: 'Número de cuenta destino (10 dígitos, solo para transferencias)',
+          example: '0987654321',
+          minLength: 10,
+          maxLength: 10
         },
         tipo: {
           type: 'string',
@@ -1140,7 +1083,7 @@ export class ProxyController {
           enum: ['TRANSFERENCIA', 'DEPOSITO', 'RETIRO']
         }
       },
-      required: ['cuenta_origen', 'monto', 'tipo']
+      required: ['numero_cuenta_origen', 'monto', 'tipo']
     }
   })
   @ApiResponse({ 
@@ -1163,7 +1106,7 @@ export class ProxyController {
       }
     }
   })
-  @ApiResponse({ status: 400, description: 'Datos inválidos' })
+  @ApiResponse({ status: 400, description: 'Datos inválidos o cuenta no encontrada' })
   @ApiResponse({ status: 401, description: 'No autorizado' })
   @Post('transactions/transacciones/validar')
   async validarTransaccion(@Req() req: Request, @Res() res: Response) {
@@ -1171,67 +1114,24 @@ export class ProxyController {
   }
 
   @ApiTags('transacciones')
-  @ApiOperation({ summary: 'Autorizar transacción con autenticación biométrica' })
-  @ApiBearerAuth('JWT-auth')
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        transaccion_id: {
-          type: 'string',
-          description: 'ID de la transacción a autorizar',
-          example: '507f1f77bcf86cd799439013'
-        },
-        codigo_verificacion: {
-          type: 'string',
-          description: 'Código de verificación',
-          example: '1234'
-        },
-        patron_autenticacion_id: {
-          type: 'string',
-          description: 'ID del patrón de autenticación usado',
-          example: '507f1f77bcf86cd799439014'
-        }
-      },
-      required: ['transaccion_id', 'codigo_verificacion']
-    }
+  @ApiOperation({ summary: 'Verificar restricciones para un monto usando número de cuenta' })
+  @ApiParam({ 
+    name: 'numeroCuenta', 
+    description: 'Número de cuenta (10 dígitos)',
+    example: '1234567890'
   })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Transacción autorizada y procesada',
-    schema: {
-      example: {
-        success: true,
-        message: 'Transacción autorizada y procesada exitosamente',
-        transaccion: {
-          _id: '507f1f77bcf86cd799439013',
-          numero_transaccion: 'TXN-1234567890-1233',
-          estado: 'COMPLETADA',
-          fecha_autorizacion: '2025-06-01T10:45:00.000Z',
-          fecha_procesamiento: '2025-06-01T10:45:00.000Z'
-        }
-      }
-    }
+  @ApiParam({ 
+    name: 'monto', 
+    description: 'Monto a verificar',
+    example: '1500.00'
   })
-  @ApiResponse({ status: 400, description: 'Código inválido o transacción no válida' })
-  @ApiResponse({ status: 404, description: 'Transacción no encontrada' })
-  @ApiResponse({ status: 401, description: 'No autorizado' })
-  @Post('transactions/transacciones/autorizar')
-  async autorizarTransaccion(@Req() req: Request, @Res() res: Response) {
-    return this.handleProxyRequest('transactions', req, res);
-  }
-
-  @ApiTags('transacciones')
-  @ApiOperation({ summary: 'Verificar restricciones para un monto en una cuenta' })
-  @ApiParam({ name: 'cuentaId', description: 'ID de la cuenta' })
-  @ApiParam({ name: 'monto', description: 'Monto a verificar' })
   @ApiBearerAuth('JWT-auth')
   @ApiResponse({ 
     status: 200, 
     description: 'Información sobre restricciones aplicables',
     schema: {
       example: {
-        cuenta_id: '507f1f77bcf86cd799439011',
+        numero_cuenta: '1234567890',
         monto_consultado: 1500.00,
         requiere_autenticacion: true,
         restriccion_aplicable: {
@@ -1245,15 +1145,8 @@ export class ProxyController {
   })
   @ApiResponse({ status: 404, description: 'Cuenta no encontrada' })
   @ApiResponse({ status: 401, description: 'No autorizado' })
-  @Get('transactions/transacciones/restricciones/:cuentaId/:monto')
+  @Get('transactions/transacciones/restricciones/:numeroCuenta/:monto')
   async verificarRestricciones(@Req() req: Request, @Res() res: Response) {
     return this.handleProxyRequest('transactions', req, res);
   }
-
-  // Catch-all para otros endpoints de transacciones
-  @All('transactions/*')
-  async proxyToTransactions(@Req() req: Request, @Res() res: Response) {
-    return this.handleProxyRequest('transactions', req, res);
-  }
-
 }
