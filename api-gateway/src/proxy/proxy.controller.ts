@@ -794,4 +794,466 @@ export class ProxyController {
   async proxyToFingerprints(@Req() req: Request, @Res() res: Response) {
     return this.handleProxyRequest('fingerprints', req, res);
   }
+
+  // ========================= ENDPOINTS DE TRANSACCIONES =========================
+  
+  @ApiTags('transacciones')
+  @ApiOperation({ summary: 'Realizar transferencia entre cuentas' })
+  @ApiBearerAuth('JWT-auth')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        cuenta_origen: {
+          type: 'string',
+          description: 'ID de la cuenta origen',
+          example: '507f1f77bcf86cd799439011'
+        },
+        cuenta_destino: {
+          type: 'string',
+          description: 'ID de la cuenta destino',
+          example: '507f1f77bcf86cd799439012'
+        },
+        monto: {
+          type: 'number',
+          description: 'Monto a transferir',
+          example: 100.50,
+          minimum: 0.01
+        },
+        descripcion: {
+          type: 'string',
+          description: 'Descripción de la transferencia',
+          example: 'Pago de servicios'
+        }
+      },
+      required: ['cuenta_origen', 'cuenta_destino', 'monto']
+    }
+  })
+  @ApiResponse({ 
+    status: 201, 
+    description: 'Transferencia creada exitosamente',
+    schema: {
+      example: {
+        success: true,
+        message: 'Transferencia procesada exitosamente',
+        transaccion: {
+          _id: '507f1f77bcf86cd799439020',
+          numero_transaccion: 'TXN-1234567890-1234',
+          tipo: 'TRANSFERENCIA',
+          monto: 100.50,
+          estado: 'COMPLETADA',
+          requiere_autenticacion: false,
+          comision: 0.10,
+          fecha_creacion: '2025-06-01T10:30:00.000Z'
+        }
+      }
+    }
+  })
+  @ApiResponse({ status: 400, description: 'Datos inválidos o saldo insuficiente' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
+  @Post('transactions/transacciones/transferir')
+  async transferir(@Req() req: Request, @Res() res: Response) {
+    return this.handleProxyRequest('transactions', req, res);
+  }
+
+  @ApiTags('transacciones')
+  @ApiOperation({ summary: 'Consultar historial de transferencias' })
+  @ApiBearerAuth('JWT-auth')
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Historial de transferencias obtenido',
+    schema: {
+      example: {
+        transacciones: [
+          {
+            _id: '507f1f77bcf86cd799439020',
+            numero_transaccion: 'TXN-1234567890-1234',
+            tipo: 'TRANSFERENCIA',
+            monto: 100.50,
+            estado: 'COMPLETADA',
+            fecha_creacion: '2025-06-01T10:30:00.000Z'
+          }
+        ],
+        pagination: {
+          page: 1,
+          limit: 10,
+          total: 1,
+          pages: 1
+        }
+      }
+    }
+  })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
+  @Get('transactions/transacciones/transferencias')
+  async obtenerTransferencias(@Req() req: Request, @Res() res: Response) {
+    return this.handleProxyRequest('transactions', req, res);
+  }
+
+  @ApiTags('transacciones')
+  @ApiOperation({ summary: 'Obtener detalles de una transferencia específica' })
+  @ApiParam({ name: 'id', description: 'ID de la transferencia' })
+  @ApiBearerAuth('JWT-auth')
+  @ApiResponse({ status: 200, description: 'Detalles de la transferencia' })
+  @ApiResponse({ status: 404, description: 'Transferencia no encontrada' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
+  @Get('transactions/transacciones/transferencias/:id')
+  async obtenerTransferenciaPorId(@Req() req: Request, @Res() res: Response) {
+    return this.handleProxyRequest('transactions', req, res);
+  }
+
+  @ApiTags('transacciones')
+  @ApiOperation({ summary: 'Realizar depósito en cuenta' })
+  @ApiBearerAuth('JWT-auth')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        cuenta_destino: {
+          type: 'string',
+          description: 'ID de la cuenta destino',
+          example: '507f1f77bcf86cd799439011'
+        },
+        monto: {
+          type: 'number',
+          description: 'Monto a depositar',
+          example: 500.00,
+          minimum: 0.01
+        },
+        descripcion: {
+          type: 'string',
+          description: 'Descripción del depósito',
+          example: 'Depósito en efectivo'
+        },
+        referencia_externa: {
+          type: 'string',
+          description: 'Referencia externa del depósito',
+          example: 'DEP-2024-001'
+        }
+      },
+      required: ['cuenta_destino', 'monto']
+    }
+  })
+  @ApiResponse({ 
+    status: 201, 
+    description: 'Depósito procesado exitosamente',
+    schema: {
+      example: {
+        success: true,
+        message: 'Depósito procesado exitosamente',
+        transaccion: {
+          _id: '507f1f77bcf86cd799439021',
+          numero_transaccion: 'TXN-1234567890-1235',
+          tipo: 'DEPOSITO',
+          monto: 500.00,
+          estado: 'COMPLETADA',
+          fecha_procesamiento: '2025-06-01T10:35:00.000Z'
+        }
+      }
+    }
+  })
+  @ApiResponse({ status: 400, description: 'Datos inválidos' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
+  @Post('transactions/transacciones/depositar')
+  async depositar(@Req() req: Request, @Res() res: Response) {
+    return this.handleProxyRequest('transactions', req, res);
+  }
+
+  @ApiTags('transacciones')
+  @ApiOperation({ summary: 'Realizar retiro de cuenta' })
+  @ApiBearerAuth('JWT-auth')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        cuenta_origen: {
+          type: 'string',
+          description: 'ID de la cuenta origen',
+          example: '507f1f77bcf86cd799439011'
+        },
+        monto: {
+          type: 'number',
+          description: 'Monto a retirar',
+          example: 200.00,
+          minimum: 0.01
+        },
+        descripcion: {
+          type: 'string',
+          description: 'Descripción del retiro',
+          example: 'Retiro en cajero automático'
+        }
+      },
+      required: ['cuenta_origen', 'monto']
+    }
+  })
+  @ApiResponse({ 
+    status: 201, 
+    description: 'Retiro procesado exitosamente',
+    schema: {
+      example: {
+        success: true,
+        message: 'Retiro procesado exitosamente',
+        transaccion: {
+          _id: '507f1f77bcf86cd799439022',
+          numero_transaccion: 'TXN-1234567890-1236',
+          tipo: 'RETIRO',
+          monto: 200.00,
+          estado: 'COMPLETADA',
+          requiere_autenticacion: false,
+          comision: 2.00
+        }
+      }
+    }
+  })
+  @ApiResponse({ status: 400, description: 'Datos inválidos o saldo insuficiente' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
+  @Post('transactions/transacciones/retirar')
+  async retirar(@Req() req: Request, @Res() res: Response) {
+    return this.handleProxyRequest('transactions', req, res);
+  }
+
+  @ApiTags('transacciones')
+  @ApiOperation({ summary: 'Historial de retiros' })
+  @ApiBearerAuth('JWT-auth')
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Historial de retiros obtenido',
+    schema: {
+      example: {
+        transacciones: [
+          {
+            _id: '507f1f77bcf86cd799439022',
+            numero_transaccion: 'TXN-1234567890-1236',
+            tipo: 'RETIRO',
+            monto: 200.00,
+            estado: 'COMPLETADA',
+            comision: 2.00,
+            fecha_creacion: '2025-06-01T10:40:00.000Z'
+          }
+        ],
+        pagination: {
+          page: 1,
+          limit: 10,
+          total: 1,
+          pages: 1
+        }
+      }
+    }
+  })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
+  @Get('transactions/transacciones/retiros')
+  async obtenerRetiros(@Req() req: Request, @Res() res: Response) {
+    return this.handleProxyRequest('transactions', req, res);
+  }
+
+  @ApiTags('transacciones')
+  @ApiOperation({ summary: 'Obtener movimientos de una cuenta' })
+  @ApiParam({ name: 'cuentaId', description: 'ID de la cuenta' })
+  @ApiBearerAuth('JWT-auth')
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Movimientos de la cuenta',
+    schema: {
+      example: {
+        cuenta_id: '507f1f77bcf86cd799439011',
+        total_movimientos: 3,
+        movimientos: [
+          {
+            _id: '507f1f77bcf86cd799439020',
+            numero_transaccion: 'TXN-1234567890-1234',
+            tipo: 'TRANSFERENCIA',
+            monto: 100.50,
+            descripcion: 'Pago de servicios',
+            estado: 'COMPLETADA',
+            fecha: '2025-06-01T10:30:00.000Z',
+            comision: 0.10
+          }
+        ]
+      }
+    }
+  })
+  @ApiResponse({ status: 404, description: 'Cuenta no encontrada' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
+  @Get('transactions/transacciones/movimientos/:cuentaId')
+  async obtenerMovimientos(@Req() req: Request, @Res() res: Response) {
+    return this.handleProxyRequest('transactions', req, res);
+  }
+
+  @ApiTags('transacciones')
+  @ApiOperation({ summary: 'Consultar saldo actual de una cuenta' })
+  @ApiParam({ name: 'cuentaId', description: 'ID de la cuenta' })
+  @ApiBearerAuth('JWT-auth')
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Información del saldo',
+    schema: {
+      example: {
+        cuenta_id: '507f1f77bcf86cd799439011',
+        numero_cuenta: '1234567890',
+        saldo_actual: 1500.75,
+        fecha_ultimo_movimiento: '2025-06-01T10:30:00.000Z',
+        ultimos_movimientos: [
+          {
+            _id: '507f1f77bcf86cd799439020',
+            numero_transaccion: 'TXN-1234567890-1234',
+            tipo: 'TRANSFERENCIA',
+            monto: 100.50,
+            fecha: '2025-06-01T10:30:00.000Z'
+          }
+        ]
+      }
+    }
+  })
+  @ApiResponse({ status: 404, description: 'Cuenta no encontrada' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
+  @Get('transactions/transacciones/saldo/:cuentaId')
+  async consultarSaldo(@Req() req: Request, @Res() res: Response) {
+    return this.handleProxyRequest('transactions', req, res);
+  }
+
+  @ApiTags('transacciones')
+  @ApiOperation({ summary: 'Validar si una transacción es posible' })
+  @ApiBearerAuth('JWT-auth')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        cuenta_origen: {
+          type: 'string',
+          description: 'ID de la cuenta origen',
+          example: '507f1f77bcf86cd799439011'
+        },
+        monto: {
+          type: 'number',
+          description: 'Monto de la transacción',
+          example: 1500.00,
+          minimum: 0.01
+        },
+        cuenta_destino: {
+          type: 'string',
+          description: 'ID de la cuenta destino (solo para transferencias)',
+          example: '507f1f77bcf86cd799439012'
+        },
+        tipo: {
+          type: 'string',
+          description: 'Tipo de transacción',
+          example: 'TRANSFERENCIA',
+          enum: ['TRANSFERENCIA', 'DEPOSITO', 'RETIRO']
+        }
+      },
+      required: ['cuenta_origen', 'monto', 'tipo']
+    }
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Resultado de la validación',
+    schema: {
+      example: {
+        es_valida: true,
+        validaciones: {
+          saldo_suficiente: true,
+          cuenta_activa: true,
+          monto_valido: true,
+          comision_calculada: 1.50,
+          monto_total: 1501.50
+        },
+        restricciones: {
+          requiere_autenticacion: true,
+          patron_requerido: '507f1f77bcf86cd799439030'
+        }
+      }
+    }
+  })
+  @ApiResponse({ status: 400, description: 'Datos inválidos' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
+  @Post('transactions/transacciones/validar')
+  async validarTransaccion(@Req() req: Request, @Res() res: Response) {
+    return this.handleProxyRequest('transactions', req, res);
+  }
+
+  @ApiTags('transacciones')
+  @ApiOperation({ summary: 'Autorizar transacción con autenticación biométrica' })
+  @ApiBearerAuth('JWT-auth')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        transaccion_id: {
+          type: 'string',
+          description: 'ID de la transacción a autorizar',
+          example: '507f1f77bcf86cd799439013'
+        },
+        codigo_verificacion: {
+          type: 'string',
+          description: 'Código de verificación',
+          example: '1234'
+        },
+        patron_autenticacion_id: {
+          type: 'string',
+          description: 'ID del patrón de autenticación usado',
+          example: '507f1f77bcf86cd799439014'
+        }
+      },
+      required: ['transaccion_id', 'codigo_verificacion']
+    }
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Transacción autorizada y procesada',
+    schema: {
+      example: {
+        success: true,
+        message: 'Transacción autorizada y procesada exitosamente',
+        transaccion: {
+          _id: '507f1f77bcf86cd799439013',
+          numero_transaccion: 'TXN-1234567890-1233',
+          estado: 'COMPLETADA',
+          fecha_autorizacion: '2025-06-01T10:45:00.000Z',
+          fecha_procesamiento: '2025-06-01T10:45:00.000Z'
+        }
+      }
+    }
+  })
+  @ApiResponse({ status: 400, description: 'Código inválido o transacción no válida' })
+  @ApiResponse({ status: 404, description: 'Transacción no encontrada' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
+  @Post('transactions/transacciones/autorizar')
+  async autorizarTransaccion(@Req() req: Request, @Res() res: Response) {
+    return this.handleProxyRequest('transactions', req, res);
+  }
+
+  @ApiTags('transacciones')
+  @ApiOperation({ summary: 'Verificar restricciones para un monto en una cuenta' })
+  @ApiParam({ name: 'cuentaId', description: 'ID de la cuenta' })
+  @ApiParam({ name: 'monto', description: 'Monto a verificar' })
+  @ApiBearerAuth('JWT-auth')
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Información sobre restricciones aplicables',
+    schema: {
+      example: {
+        cuenta_id: '507f1f77bcf86cd799439011',
+        monto_consultado: 1500.00,
+        requiere_autenticacion: true,
+        restriccion_aplicable: {
+          monto_desde: 1000,
+          monto_hasta: 5000,
+          patron_autenticacion: '507f1f77bcf86cd799439030'
+        },
+        patron_requerido: '507f1f77bcf86cd799439030'
+      }
+    }
+  })
+  @ApiResponse({ status: 404, description: 'Cuenta no encontrada' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
+  @Get('transactions/transacciones/restricciones/:cuentaId/:monto')
+  async verificarRestricciones(@Req() req: Request, @Res() res: Response) {
+    return this.handleProxyRequest('transactions', req, res);
+  }
+
+  // Catch-all para otros endpoints de transacciones
+  @All('transactions/*')
+  async proxyToTransactions(@Req() req: Request, @Res() res: Response) {
+    return this.handleProxyRequest('transactions', req, res);
+  }
+
 }

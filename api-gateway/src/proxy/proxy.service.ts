@@ -1,4 +1,3 @@
-// api-gateway/src/proxy/proxy.service.ts
 import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
@@ -22,7 +21,8 @@ export class ProxyService {
       users: configService.get('USERS_SERVICE_URL', 'http://localhost:3001'),
       accounts: configService.get('ACCOUNTS_SERVICE_URL', 'http://localhost:3003'),
       fingerprints: configService.get('FINGERPRINT_SERVICE_URL','http://localhost:3008'),
-      patterns:configService.get('PATTERNS_SERVICE_URL','http://localhost:3009')
+      patterns: configService.get('PATTERNS_SERVICE_URL','http://localhost:3009'),
+      transactions: configService.get('TRANSACTIONS_SERVICE_URL','http://localhost:3004'), // 👈 NUEVO
     };
   }
 
@@ -124,6 +124,4 @@ export class ProxyService {
     
     return result;
   }
-
-  
 }
