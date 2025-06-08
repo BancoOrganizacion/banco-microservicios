@@ -211,6 +211,7 @@ export class CuentasController {
     return this.cuentasService.getMovimientos(id);
   }
 
+  // PARA MICROSERVICIOS 
   // Endpoint para microservicios - Procesar movimiento
   @MessagePattern('accounts.procesarMovimiento')
   async procesarMovimiento(data: { cuentaId: string, monto: number, movimientoId: ObjectId }) {
