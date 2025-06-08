@@ -124,9 +124,8 @@ export class TransactionService {
 
     const transaccionGuardada = await nuevaTransaccion.save();
 
-    if (!restriccionesValidas.requiere_autenticacion) {
-      await this.procesarTransaccion(transaccionGuardada._id.toString());
-    }
+    // EL MICROCONTRONLADOR HACE ESTO
+    
 
     return transaccionGuardada;
   }
@@ -227,70 +226,6 @@ export class TransactionService {
     };
   }
 
-  async obtenerTransferenciaPorId(id: string, usuarioId: string): Promise<any> {
-    const transferencia = await this.transaccionModel
-      .findOne({
-        _id: id,
-        tipo: TipoTransaccion.TRANSFERENCIA,
-        usuario_ejecutor: usuarioId
-      })
-      .exec();
-
-    if (!transferencia) {
-      throw new NotFoundException(`Transferencia con ID ${id} no encontrada`);
-    }
-
-    // Enriquecer con información de las cuentas
-    const cuentaOrigen = await this.obtenerCuentaPorId(transferencia.cuenta_origen.toString());
-    const cuentaDestino = transferencia.cuenta_destino ? 
-      await this.obtenerCuentaPorId(transferencia.cuenta_destino.toString()) : null;
-
-    return {
-      ...transferencia.toObject(),
-      cuenta_origen_numero: cuentaOrigen.numero_cuenta,
-      cuenta_destino_numero: cuentaDestino?.numero_cuenta || null
-    };
-  }
-
-  async obtenerRetiros(usuarioId: string, query: QueryTransaccionesDto): Promise<any> {
-    const filtros: any = {
-      usuario_ejecutor: usuarioId,
-      tipo: TipoTransaccion.RETIRO
-    };
-
-    const skip = (query.page - 1) * query.limit;
-
-    const [transacciones, total] = await Promise.all([
-      this.transaccionModel
-        .find(filtros)
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(query.limit)
-        .exec(),
-      this.transaccionModel.countDocuments(filtros)
-    ]);
-
-    // Enriquecer con información de las cuentas
-    const transaccionesEnriquecidas = await Promise.all(
-      transacciones.map(async (transaccion) => {
-        const cuentaOrigen = await this.obtenerCuentaPorId(transaccion.cuenta_origen.toString());
-        return {
-          ...transaccion.toObject(),
-          cuenta_origen_numero: cuentaOrigen.numero_cuenta
-        };
-      })
-    );
-
-    return {
-      transacciones: transaccionesEnriquecidas,
-      pagination: {
-        page: query.page,
-        limit: query.limit,
-        total,
-        pages: Math.ceil(total / query.limit)
-      }
-    };
-  }
 
   async obtenerMovimientosCuenta(cuentaId: string): Promise<Transaccion[]> {
     return this.transaccionModel
@@ -382,12 +317,6 @@ export class TransactionService {
         case TipoTransaccion.TRANSFERENCIA:
           await this.procesarTransferencia(transaccion);
           break;
-        case TipoTransaccion.DEPOSITO:
-          await this.procesarDeposito(transaccion);
-          break;
-        case TipoTransaccion.RETIRO:
-          await this.procesarRetiro(transaccion);
-          break;
       }
 
       transaccion.estado = EstadoTransaccion.COMPLETADA;
@@ -443,37 +372,7 @@ export class TransactionService {
     ]);
   }
 
-  private async procesarDeposito(transaccion: Transaccion): Promise<void> {
-    await firstValueFrom(
-      this.accountsClient.send('accounts.actualizarSaldo', {
-        cuentaId: transaccion.cuenta_origen,
-        monto: transaccion.monto
-      })
-    );
+  
 
-    await firstValueFrom(
-      this.accountsClient.send('accounts.procesarMovimiento', {
-        cuentaId: transaccion.cuenta_origen,
-        monto: transaccion.monto,
-        movimientoId: transaccion._id
-      })
-    );
-  }
 
-  private async procesarRetiro(transaccion: Transaccion): Promise<void> {
-    await firstValueFrom(
-      this.accountsClient.send('accounts.actualizarSaldo', {
-        cuentaId: transaccion.cuenta_origen,
-        monto: -(transaccion.monto + transaccion.comision)
-      })
-    );
-
-    await firstValueFrom(
-      this.accountsClient.send('accounts.procesarMovimiento', {
-        cuentaId: transaccion.cuenta_origen,
-        monto: -(transaccion.monto + transaccion.comision),
-        movimientoId: transaccion._id
-      })
-    );
-  }
 }
