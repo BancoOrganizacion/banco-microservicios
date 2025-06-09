@@ -35,3 +35,5 @@ export * from './cuentas/dto/create-restriccion.dto';
 export * from './cuentas/dto/update-cuenta.dto';
 export * from './cuentas/dto/create-cuenta.dto';
 export * from './cuentas/dto/update-restriccion.dto';
+//Trx
+export * from './transaction/schemas/transaction.schema';

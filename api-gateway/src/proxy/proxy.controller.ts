@@ -394,16 +394,15 @@ export class ProxyController {
   }
 
   @ApiTags('accounts')
-  @ApiOperation({ summary: 'Obtener movimientos de una cuenta' })
-  @ApiParam({ name: 'id', description: 'ID de la cuenta' })
-  @ApiBearerAuth('JWT-auth')
-  @ApiResponse({ status: 200, description: 'Lista de movimientos' })
-  @ApiResponse({ status: 404, description: 'Cuenta no encontrada' })
-  @ApiResponse({ status: 401, description: 'No autorizado' })
-  @Get('accounts/cuentas/:id/movimientos')
-  async getMovimientosCuenta(@Req() req: Request, @Res() res: Response) {
-    return this.handleProxyRequest('accounts', req, res);
-  }
+@ApiOperation({ summary: 'Obtener movimientos de cuentas' })
+@ApiBearerAuth('JWT-auth')
+@ApiResponse({ status: 200, description: 'Lista de movimientos' })
+@ApiResponse({ status: 404, description: 'Movimientos no encontrados' })
+@ApiResponse({ status: 401, description: 'No autorizado' })
+@Get('accounts/cuentas/movimientos')
+async getMovimientosCuenta(@Req() req: Request, @Res() res: Response) {
+  return this.handleProxyRequest('accounts', req, res);
+}
 
   @ApiTags('accounts')
   @ApiOperation({ summary: 'Añadir una restricción a una cuenta' })

@@ -8,6 +8,7 @@ import { UpdateCuentaDto } from 'shared-models';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
 import { UpdateRestriccionDto } from './dto/update-restriccion.dto';
+import {Transaccion,TransaccionSchema} from 'shared-models'
 
 @Injectable()
 export class CuentasService {
@@ -15,6 +16,7 @@ export class CuentasService {
 
   constructor(
     @InjectModel(Cuenta.name) private cuentaModel: Model<Cuenta>,
+    @InjectModel(Transaccion.name) private trxModel: Model<Transaccion>,
     @Inject('USERS_SERVICE') private readonly usersClient: ClientProxy,
     @Inject('AUTH_SERVICE') private readonly authClient: ClientProxy
   ) {}
@@ -232,16 +234,36 @@ export class CuentasService {
    * Obtener los movimientos de una cuenta
    * Este método se comunicará con el microservicio de movimientos cuando esté disponible
    */
-  async getMovimientos(cuentaId: string): Promise<any[]> {
-    const cuenta = await this.cuentaModel.findById(cuentaId).exec();
-    
-    if (!cuenta) {
-      throw new NotFoundException(`Cuenta con ID ${cuentaId} no encontrada`);
-    }
-    
-    // Debe retornar el documento de transacciones no de movimintos
-    return [];
+  async getMovimientos(idUsuario: string): Promise<any[]> {
+  // 1. Buscar la cuenta del usuario usando el titular
+  const cuenta = await this.cuentaModel.findOne({ titular: idUsuario }).exec();
+  
+  if (!cuenta) {
+    throw new NotFoundException(`No se encontró cuenta para el usuario con ID ${idUsuario}`);
   }
+  
+  const cuentaId = cuenta._id; // ObjectId de la cuenta
+  
+  // 2. Buscar transacciones donde la cuenta aparezca como origen o destino
+  const transacciones = await this.trxModel.find({
+    $or: [
+      { cuenta_origen: cuentaId },
+      { cuenta_destino: cuentaId }
+    ]
+  }).exec();
+  
+  // 3. Mapear las transacciones para devolver solo los datos relevantes
+  const movimientos = transacciones.map(transaccion => ({
+    numero_transaccion: transaccion.numero_transaccion,
+    monto_total: transaccion.monto + (transaccion.comision || 0), // monto + comisión
+    descripcion: transaccion.descripcion,
+    tipo: transaccion.cuenta_origen.toString() === cuentaId.toString() ? 'SALIDA' : 'ENTRADA', // Para identificar si es débito o crédito
+    cuenta_origen: transaccion.cuenta_origen,
+    cuenta_destino: transaccion.cuenta_destino
+  }));
+  
+  return movimientos;
+}
 
   /**
    * Actualiza el saldo de una cuenta (método interno)

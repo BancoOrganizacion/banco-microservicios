@@ -190,26 +190,26 @@ export class CuentasController {
   }
 
   // Endpoint para obtener movimientos de una cuenta
-  @ApiOperation({ summary: 'Obtener movimientos de una cuenta' })
-  @ApiParam({ name: 'id', description: 'ID de la cuenta' })
-  @ApiOkResponse({ description: 'Lista de movimientos' })
-  @ApiNotFoundResponse({ description: 'Cuenta no encontrada' })
-  @ApiUnauthorizedResponse({ description: 'No autorizado' })
-  @ApiBearerAuth('JWT-auth')
-  @UseGuards(JwtDataGuard)
-  @Get(':id/movimientos')
-  async getMovimientos(@Param('id') id: string, @Request() req) {
-    this.logger.debug(`Obteniendo movimientos de cuenta: ${id}`);
-    const cuenta = await this.cuentasService.findOne(id);
+ // Endpoint para obtener movimientos de las cuentas del usuario
+@ApiOperation({ summary: 'Obtener movimientos de las cuentas del usuario' })
+@ApiOkResponse({ description: 'Lista de movimientos' })
+@ApiNotFoundResponse({ description: 'Usuario no encontrado o sin cuentas' })
+@ApiUnauthorizedResponse({ description: 'No autorizado' })
+@ApiBearerAuth('JWT-auth')
+@UseGuards(JwtDataGuard)
+@Get('movimientos')
+async getMovimientos(@Request() req) {
+  const userId = req.user.id_usuario;
+  this.logger.debug(`Obteniendo movimientos para usuario: ${userId}`);
 
-    // Verificar que el usuario tenga acceso a esta cuenta
-    if (req.user.id_rol !== 'ID_ROL_ADMIN' &&
-      cuenta.titular.toString() !== req.user.id_usuario) {
-      throw new BadRequestException('No tienes permiso para ver los movimientos de esta cuenta');
-    }
-
-    return this.cuentasService.getMovimientos(id);
+  // Los admins pueden ver todos los movimientos, los usuarios solo los suyos
+  if (req.user.id_rol !== 'ID_ROL_ADMIN') {
+   
+    return this.cuentasService.getMovimientos(userId);
+  } else {
+    return this.cuentasService.getMovimientos(userId);
   }
+}
 
   // PARA MICROSERVICIOS 
   // Endpoint para microservicios - Procesar movimiento
