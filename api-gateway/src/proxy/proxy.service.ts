@@ -21,7 +21,7 @@ export class ProxyService {
       users: configService.get('USERS_SERVICE_URL', 'http://localhost:3001'),
       accounts: configService.get('ACCOUNTS_SERVICE_URL', 'http://localhost:3003'),
       fingerprints: configService.get('FINGERPRINT_SERVICE_URL','http://localhost:3008'),
-      patterns: configService.get('PATTERNS_SERVICE_URL','http://localhost:3009'),
+      patterns: configService.get('PATTERNS_SERVICE_URL','http://localhost:3009/patterns'),
       transactions: configService.get('TRANSACTIONS_SERVICE_URL','http://localhost:3004'), // 👈 NUEVO
     };
   }

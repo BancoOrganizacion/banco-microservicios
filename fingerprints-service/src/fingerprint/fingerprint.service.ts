@@ -18,26 +18,43 @@ export class FingerprintService {
     const createdFingerprint = new this.dedoRegistradoModel(dedoRegistrado);
     return createdFingerprint.save();
   }
-  async getFingersByAccount(id: string) {
-    try {
-      const cuentaAppUsuario = await this.cuentaAppModel.findOne({persona:id});
+async getFingersByAccount(id: string) {
+  try {
+    const cuentaAppUsuario = await this.cuentaAppModel.findOne({ persona: id });
 
-      const dedos = await this.dedoPatronModel
-        .find({ id_cuenta_app: cuentaAppUsuario._id })
-        .populate({
-          path:'dedos_registrados',
-          select:'_id dedo'
-        }) // Asegura traer el documento completo
-        .exec();
-
-      // Extraer solo los dedos registrados
-      const dedosRegistrados = dedos.map(d => d.dedos_registrados);
-
-      return dedosRegistrados;
-    } catch (error) {
-      throw new BadRequestException(`Error al obtener dedos registrados:`);
+    if (!cuentaAppUsuario) {
+      throw new BadRequestException('El usuario no existe');
     }
+
+    const dedosPatron = await this.dedoPatronModel
+      .find({ id_cuenta_app: cuentaAppUsuario._id })
+      .populate({
+        path: 'dedos_registrados',
+        select: '_id dedo'
+      })
+      .exec();
+
+    // Construir la lista de dedos patrón con su respectivo dedo registrado
+    const resultado = dedosPatron.map(dp => {
+      // Asegurar que haya al menos un dedo registrado
+      if (dp.dedos_registrados) {
+        // Aquí asumimos que cada dedo patrón tiene solo un dedo registrado asociado
+        const dedoRegistrado = dp.dedos_registrados;
+        return {
+          dedo_patron_id: dp._id,
+          dedo: dedoRegistrado.dedo
+        };
+      } else {
+        return null; // o podrías filtrar más adelante
+      }
+    }).filter(Boolean); // elimina los nulls
+
+    return resultado;
+  } catch (error) {
+    throw new BadRequestException(`Error al obtener dedos registrados: ${error.message}`);
   }
+}
+
 
   async createFingerPattern(createFingerpatternDto: CreateFingerpatternDto) {
     // Validate that we have exactly 5 fingers in the pattern

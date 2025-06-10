@@ -18,34 +18,45 @@ export class PatternService {
   /**
    * Crear un nuevo patrón de autenticación
    */
-  async crearPatronAutenticacion(
-    idUsuario: string,
-    dedosPatronIds: string[]
-  ): Promise<PatronAutenticacion> {
-    try {
-      // Validar que los dedos patrón existan
-      const cuentaAppUsuario = await this.cuentaAppModel.findOne({persona:idUsuario});
-
-      const dedosExistentes = await this.dedoPatronModel
-        .find({ _id: { $in: dedosPatronIds } })
-        .exec();
-
-      if (dedosExistentes.length !== dedosPatronIds.length) {
-        throw new BadRequestException('Algunos dedos patrón no existen');
-      }
-
-      const nuevoPatron = new this.patronAutenticacionModel({
-        id_patron_autenticacion: new Types.ObjectId(),
-        fecha_creacion: new Date(),
-        activo: true,
-        dedos_patron: dedosPatronIds,
-      });
-
-      return await nuevoPatron.save();
-    } catch (error) {
-      throw new BadRequestException(`Error al crear patrón: ${error.message}`);
+ async crearPatronAutenticacion(
+  idUsuario: string,
+  dedosPatronIds: string[]
+): Promise<PatronAutenticacion> {
+  try {
+    // Validar mínimo de 3 dedos patrón
+    if (dedosPatronIds.length < 3) {
+      throw new BadRequestException('Debe proporcionar al menos 3 dedos patrón');
     }
+
+    // Validar existencia de usuario
+    const cuentaAppUsuario = await this.cuentaAppModel.findOne({ persona: idUsuario });
+    if (!cuentaAppUsuario) {
+      throw new BadRequestException('El usuario no existe');
+    }
+
+    // Validar existencia de todos los dedos patrón
+    const dedosExistentes = await this.dedoPatronModel
+      .find({ _id: { $in: dedosPatronIds } })
+      .exec();
+
+    if (dedosExistentes.length !== dedosPatronIds.length) {
+      throw new BadRequestException('Algunos dedos patrón no existen');
+    }
+
+    // Construir nuevo patrón de autenticación
+    const nuevoPatron = new this.patronAutenticacionModel({
+      id_patron_autenticacion: new Types.ObjectId(),
+      fecha_creacion: new Date(),
+      activo: true,
+      dedos_patron: dedosPatronIds, // el orden se refleja en el índice del array
+    });
+
+    return await nuevoPatron.save();
+  } catch (error) {
+    throw new BadRequestException(`Error al crear patrón de autenticación: ${error.message}`);
   }
+}
+
 
   /**
    * Obtener patrón de autenticación por ID con sus dedos patrón
