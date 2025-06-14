@@ -234,35 +234,49 @@ export class CuentasService {
    * Obtener los movimientos de una cuenta
    * Este método se comunicará con el microservicio de movimientos cuando esté disponible
    */
-  async getMovimientos(idUsuario: string): Promise<any[]> {
-  // 1. Buscar la cuenta del usuario usando el titular
-  const cuenta = await this.cuentaModel.findOne({ titular: idUsuario }).exec();
+  async getMovimientos(idUsuario: string, idCuenta: string): Promise<any[]> {
+  // 1. Buscar la cuenta específica (sin verificar titular para admins)
+  const cuenta = await this.cuentaModel.findOne({ _id: idCuenta }).exec();
   
   if (!cuenta) {
-    throw new NotFoundException(`No se encontró cuenta para el usuario con ID ${idUsuario}`);
+    throw new NotFoundException(`No se encontró la cuenta con ID ${idCuenta}`);
   }
   
-  const cuentaId = cuenta._id; // ObjectId de la cuenta
-  
-  // 2. Buscar transacciones donde la cuenta aparezca como origen o destino
+  // 2. Buscar transacciones donde esta cuenta específica aparezca como origen o destino
   const transacciones = await this.trxModel.find({
     $or: [
-      { cuenta_origen: cuentaId },
-      { cuenta_destino: cuentaId }
+      { cuenta_origen: cuenta._id },
+      { cuenta_destino: cuenta._id }
     ]
   }).exec();
   
   // 3. Mapear las transacciones para devolver solo los datos relevantes
   const movimientos = transacciones.map(transaccion => ({
     numero_transaccion: transaccion.numero_transaccion,
-    monto_total: transaccion.monto + (transaccion.comision || 0), // monto + comisión
+    monto_total: transaccion.monto + (transaccion.comision || 0),
     descripcion: transaccion.descripcion,
-    tipo: transaccion.cuenta_origen.toString() === cuentaId.toString() ? 'SALIDA' : 'ENTRADA', // Para identificar si es débito o crédito
+    tipo: transaccion.cuenta_origen.toString() === cuenta._id.toString() ? 'SALIDA' : 'ENTRADA',
     cuenta_origen: transaccion.cuenta_origen,
-    cuenta_destino: transaccion.cuenta_destino
+    cuenta_destino: transaccion.cuenta_destino,
+    fecha: transaccion.createdAt,
+    // Info adicional para admins
+    titular_cuenta: cuenta.titular
   }));
   
   return movimientos;
+}
+
+// OPCIONAL: Método para obtener todas las cuentas del usuario (útil para el frontend)
+async getCuentasUsuario(idUsuario: string): Promise<any[]> {
+  const cuentas = await this.cuentaModel.find({ titular: idUsuario }).exec();
+  
+  return cuentas.map(cuenta => ({
+    id: cuenta._id,
+    numero_cuenta: cuenta.numero_cuenta,
+    tipo_cuenta: cuenta.tipo_cuenta,
+    saldo: cuenta.monto_actual,
+    estado: cuenta.estado
+  }));
 }
 
   /**

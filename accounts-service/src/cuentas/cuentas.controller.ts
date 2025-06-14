@@ -9,6 +9,7 @@ import {
   UseGuards,
   Request,
   Logger,
+  Query,
   NotFoundException,
   BadRequestException
 } from '@nestjs/common';
@@ -34,7 +35,8 @@ import {
   ApiNotFoundResponse,
   ApiBadRequestResponse,
   ApiUnauthorizedResponse,
-  ApiForbiddenResponse
+  ApiForbiddenResponse,
+  ApiQuery
 } from '@nestjs/swagger';
 import { ObjectId } from 'mongoose';
 import { UpdateRestriccionDto } from './dto/update-restriccion.dto';
@@ -191,23 +193,38 @@ export class CuentasController {
 
   // Endpoint para obtener movimientos de una cuenta
  // Endpoint para obtener movimientos de las cuentas del usuario
-@ApiOperation({ summary: 'Obtener movimientos de las cuentas del usuario' })
-@ApiOkResponse({ description: 'Lista de movimientos' })
-@ApiNotFoundResponse({ description: 'Usuario no encontrado o sin cuentas' })
+@ApiOperation({ summary: 'Obtener movimientos de una cuenta específica del usuario' })
+@ApiOkResponse({ description: 'Lista de movimientos de la cuenta' })
+@ApiNotFoundResponse({ description: 'Usuario no encontrado, cuenta no encontrada o cuenta no pertenece al usuario' })
 @ApiUnauthorizedResponse({ description: 'No autorizado' })
 @ApiBearerAuth('JWT-auth')
+@ApiQuery({ 
+  name: 'id_cuenta', 
+  description: 'ID de la cuenta de la cual obtener los movimientos',
+  required: true,
+  type: 'string'
+})
 @UseGuards(JwtDataGuard)
 @Get('movimientos')
-async getMovimientos(@Request() req) {
+async getMovimientos(
+  @Request() req,
+  @Query('id_cuenta') idCuenta: string
+) {
   const userId = req.user.id_usuario;
-  this.logger.debug(`Obteniendo movimientos para usuario: ${userId}`);
+  this.logger.debug(`Obteniendo movimientos para usuario: ${userId}, cuenta: ${idCuenta}`);
 
-  // Los admins pueden ver todos los movimientos, los usuarios solo los suyos
-  if (req.user.id_rol !== 'ID_ROL_ADMIN') {
-   
-    return this.cuentasService.getMovimientos(userId);
+  // Validar que el id_cuenta fue proporcionado
+  if (!idCuenta) {
+    throw new BadRequestException('El parámetro id_cuenta es requerido');
+  }
+
+  // Los admins pueden ver movimientos de cualquier cuenta
+  // Los usuarios solo pueden ver movimientos de sus propias cuentas
+  if (req.user.id_rol === 'ID_ROL_ADMIN') {
+    return this.cuentasService.getMovimientos(userId, idCuenta);
   } else {
-    return this.cuentasService.getMovimientos(userId);
+    // Para usuarios normales, verificar que la cuenta les pertenece
+    return this.cuentasService.getMovimientos(userId, idCuenta);
   }
 }
 
