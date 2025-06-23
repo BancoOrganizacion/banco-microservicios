@@ -235,36 +235,36 @@ export class CuentasService {
    * Este método se comunicará con el microservicio de movimientos cuando esté disponible
    */
   async getMovimientos(idUsuario: string, idCuenta: string): Promise<any[]> {
-  // 1. Buscar la cuenta específica (sin verificar titular para admins)
-  const cuenta = await this.cuentaModel.findOne({ _id: idCuenta }).exec();
-  
-  if (!cuenta) {
-    throw new NotFoundException(`No se encontró la cuenta con ID ${idCuenta}`);
+    // Si idCuenta viene como 'id1,id2', tomar solo el primero y validar
+    const cuentaIdLimpio = (idCuenta || '').split(',')[0].trim();
+    if (!Types.ObjectId.isValid(cuentaIdLimpio)) {
+      throw new BadRequestException(`El parámetro idCuenta no es un ObjectId válido: ${cuentaIdLimpio}`);
+    }
+    const cuenta = await this.cuentaModel.findOne({ _id: cuentaIdLimpio }).exec();
+    if (!cuenta) {
+      throw new NotFoundException(`No se encontró la cuenta con ID ${cuentaIdLimpio}`);
+    }
+    // Buscar transacciones donde esta cuenta específica aparezca como origen o destino y estado válido
+    const query = {
+      $or: [
+        { cuenta_origen: cuenta._id },
+        { cuenta_destino: cuenta._id }
+      ],
+      estado: { $in: ['AUTORIZADA', 'COMPLETADA'] }
+    };
+    const transacciones = await this.trxModel.find(query).exec();
+    // Mapear las transacciones para devolver solo los datos relevantes
+    return transacciones.map(transaccion => ({
+      numero_transaccion: transaccion.numero_transaccion,
+      monto_total: transaccion.monto + (transaccion.comision || 0),
+      descripcion: transaccion.descripcion,
+      tipo: transaccion.cuenta_origen.toString() === cuenta._id.toString() ? 'SALIDA' : 'ENTRADA',
+      cuenta_origen: transaccion.cuenta_origen,
+      cuenta_destino: transaccion.cuenta_destino,
+      fecha: transaccion.createdAt,
+      titular_cuenta: cuenta.titular
+    }));
   }
-  
-  // 2. Buscar transacciones donde esta cuenta específica aparezca como origen o destino
-  const transacciones = await this.trxModel.find({
-    $or: [
-      { cuenta_origen: cuenta._id },
-      { cuenta_destino: cuenta._id }
-    ]
-  }).exec();
-  
-  // 3. Mapear las transacciones para devolver solo los datos relevantes
-  const movimientos = transacciones.map(transaccion => ({
-    numero_transaccion: transaccion.numero_transaccion,
-    monto_total: transaccion.monto + (transaccion.comision || 0),
-    descripcion: transaccion.descripcion,
-    tipo: transaccion.cuenta_origen.toString() === cuenta._id.toString() ? 'SALIDA' : 'ENTRADA',
-    cuenta_origen: transaccion.cuenta_origen,
-    cuenta_destino: transaccion.cuenta_destino,
-    fecha: transaccion.createdAt,
-    // Info adicional para admins
-    titular_cuenta: cuenta.titular
-  }));
-  
-  return movimientos;
-}
 
 // OPCIONAL: Método para obtener todas las cuentas del usuario (útil para el frontend)
 async getCuentasUsuario(idUsuario: string): Promise<any[]> {
