@@ -182,7 +182,25 @@ export class CuentasService {
    * Añade una restricción a una cuenta
    */
   async addRestriccion(id: string, restriccion: CreateRestriccionDto): Promise<Cuenta> {
-    // Validaciones existentes...
+    const cuenta = await this.cuentaModel.findById(id).exec();
+    
+    if (!cuenta) {
+      throw new NotFoundException(`Cuenta con ID ${id} no encontrada`);
+    }
+    
+    // Validar que monto_desde sea menor que monto_hasta
+    if (restriccion.monto_desde >= restriccion.monto_hasta) {
+      throw new BadRequestException('El monto inicial debe ser menor que el monto final');
+    }
+    
+    // Verificar solapamiento con otras restricciones (sin permitir valores límite compartidos)
+    const solapamiento = cuenta.restricciones.some(r => 
+    restriccion.monto_desde <= r.monto_hasta && restriccion.monto_hasta >= r.monto_desde
+  );
+    
+    if (solapamiento) {
+      throw new BadRequestException('Los rangos de monto se solapan con restricciones existentes');
+    }
     
     // Crear explícitamente un objeto con la estructura exacta esperada por el esquema
     const nuevaRestriccion = {
@@ -195,7 +213,6 @@ export class CuentasService {
       nuevaRestriccion['patron_autenticacion'] = new Types.ObjectId(restriccion.patron_autenticacion);
     }
 
-    
     console.log("Nueva restricción a guardar:", nuevaRestriccion);
 
     // Usar findByIdAndUpdate con $push, pero asegurándonos de dar el formato correcto
@@ -204,7 +221,9 @@ export class CuentasService {
       { $push: { restricciones: nuevaRestriccion } },
       { new: true }
     ).exec();
+    
     console.log("Cuenta actualizada:", JSON.stringify(cuentaActualizada, null, 2));
+    
     if (!cuentaActualizada) {
       throw new NotFoundException(`Cuenta con ID ${id} no encontrada`);
     }

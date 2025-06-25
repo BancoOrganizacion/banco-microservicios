@@ -797,7 +797,7 @@ async getMovimientosCuenta(@Req() req: Request, @Res() res: Response) {
 
   // ========================= ENDPOINTS DE TRANSACCIONES =========================
   
-   @ApiTags('transacciones')
+  @ApiTags('transacciones')
   @ApiOperation({ summary: 'Realizar transferencia entre cuentas usando números de cuenta' })
   @ApiBearerAuth('JWT-auth')
   @ApiBody({
