@@ -76,7 +76,7 @@ export class TransactionController {
             monto: { type: 'number' },
             estado: { type: 'string', example: 'PENDIENTE' },
             requiere_autenticacion: { type: 'boolean' },
-            comision: { type: 'number' },
+            comision: { type: 'number', example: 0 }, // Siempre 0
             fecha_creacion: { type: 'string', format: 'date-time' }
           }
         }
@@ -117,7 +117,6 @@ export class TransactionController {
           monto: transaccion.monto,
           estado: transaccion.estado,
           requiere_autenticacion: transaccion.requiere_autenticacion,
-          comision: transaccion.comision,
           fecha_creacion: transaccion.createdAt
         }
       };
@@ -126,11 +125,151 @@ export class TransactionController {
       throw error;
     }
   }
-  
+
+  @ApiOperation({ summary: 'Consultar historial de transferencias' })
+  @ApiQuery({ name: 'fecha_inicio', required: false, description: 'Fecha de inicio (YYYY-MM-DD)' })
+  @ApiQuery({ name: 'fecha_fin', required: false, description: 'Fecha de fin (YYYY-MM-DD)' })
+  @ApiQuery({ name: 'estado', required: false, enum: ['PENDIENTE', 'COMPLETADA', 'FALLIDA', 'CANCELADA', 'AUTORIZADA', 'REVERSADA'] })
+  @ApiQuery({ name: 'page', required: false, type: 'number', example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: 'number', example: 10 })
+  @ApiOkResponse({
+    description: 'Historial de transferencias obtenido',
+    schema: {
+      type: 'object',
+      properties: {
+        transacciones: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              _id: { type: 'string' },
+              numero_transaccion: { type: 'string' },
+              tipo: { type: 'string', example: 'TRANSFERENCIA' },
+              monto: { type: 'number' },
+              estado: { type: 'string' },
+              cuenta_origen_numero: { type: 'string' },
+              cuenta_destino_numero: { type: 'string' },
+              fecha_creacion: { type: 'string', format: 'date-time' }
+            }
+          }
+        },
+        pagination: {
+          type: 'object',
+          properties: {
+            page: { type: 'number' },
+            limit: { type: 'number' },
+            total: { type: 'number' },
+            pages: { type: 'number' }
+          }
+        }
+      }
+    }
+  })
+  @ApiUnauthorizedResponse({ description: 'No autorizado' })
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtDataGuard)
+  @Get('transferencias')
+  async obtenerTransferencias(@Query() query: QueryTransaccionesDto, @Request() req) {
+    try {
+      const usuarioId = req.user?.id_usuario;
+      this.logger.debug(`Obteniendo transferencias para usuario ${usuarioId}`);
+      
+      const resultado = await this.transactionService.obtenerTransferencias(usuarioId, query);
+      
+      return resultado;
+    } catch (error) {
+      this.logger.error(`Error obteniendo transferencias: ${error.message}`);
+      throw error;
+    }
+  }
+
+  @ApiOperation({ summary: 'Obtener detalles de una transferencia específica' })
+  @ApiParam({ name: 'id', description: 'ID de la transferencia' })
+  @ApiOkResponse({
+    description: 'Detalles de la transferencia',
+    schema: {
+      type: 'object',
+      properties: {
+        _id: { type: 'string' },
+        numero_transaccion: { type: 'string' },
+        tipo: { type: 'string', example: 'TRANSFERENCIA' },
+        monto: { type: 'number' },
+        estado: { type: 'string' },
+        cuenta_origen_numero: { type: 'string' },
+        cuenta_destino_numero: { type: 'string' },
+        descripcion: { type: 'string' },
+        fecha_creacion: { type: 'string', format: 'date-time' }
+      }
+    }
+  })
+  @ApiNotFoundResponse({ description: 'Transferencia no encontrada' })
+  @ApiUnauthorizedResponse({ description: 'No autorizado' })
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtDataGuard)
+  @Get('transferencias/:id')
+  async obtenerTransferenciaPorId(@Param('id') id: string, @Request() req) {
+    try {
+      const usuarioId = req.user?.id_usuario;
+      this.logger.debug(`Obteniendo transferencia ${id} para usuario ${usuarioId}`);
+      
+      // Aquí podrías implementar la lógica para obtener una transferencia específica
+      // y verificar que pertenece al usuario autenticado
+      
+      throw new BadRequestException('Método no implementado aún');
+    } catch (error) {
+      this.logger.error(`Error obteniendo transferencia: ${error.message}`);
+      throw error;
+    }
+  }
 
   // ============================================
-  // 4. VALIDACIÓN Y AUTORIZACIÓN
+  // 2. VALIDACIÓN Y AUTORIZACIÓN
   // ============================================
+
+  @ApiOperation({ summary: 'Validar si una transacción es posible usando números de cuenta' })
+  @ApiBody({ type: ValidarTransaccionDto })
+  @ApiOkResponse({
+    description: 'Resultado de la validación',
+    schema: {
+      type: 'object',
+      properties: {
+        es_valida: { type: 'boolean', example: true },
+        validaciones: {
+          type: 'object',
+          properties: {
+            saldo_suficiente: { type: 'boolean', example: true },
+            cuenta_activa: { type: 'boolean', example: true },
+            monto_valido: { type: 'boolean', example: true },
+            monto_total: { type: 'number', example: 1500.00 } // Igual al monto solicitado
+          }
+        },
+        restricciones: {
+          type: 'object',
+          properties: {
+            requiere_autenticacion: { type: 'boolean', example: true },
+            patron_requerido: { type: 'string', example: '507f1f77bcf86cd799439030' }
+          }
+        }
+      }
+    }
+  })
+  @ApiBadRequestResponse({ description: 'Datos inválidos o cuenta no encontrada' })
+  @ApiUnauthorizedResponse({ description: 'No autorizado' })
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtDataGuard)
+  @Post('validar')
+  async validarTransaccion(@Body() validarDto: ValidarTransaccionDto) {
+    try {
+      this.logger.debug(`Validando transacción: ${JSON.stringify(validarDto)}`);
+      
+      const resultado = await this.transactionService.validarTransaccion(validarDto);
+      
+      return resultado;
+    } catch (error) {
+      this.logger.error(`Error validando transacción: ${error.message}`);
+      throw error;
+    }
+  }
 
   @ApiOperation({ summary: 'Autorizar transacción con autenticación biométrica' })
   @ApiBody({ type: AutorizarTransaccionDto })
@@ -182,6 +321,4 @@ export class TransactionController {
       throw error;
     }
   }
-
-
 }

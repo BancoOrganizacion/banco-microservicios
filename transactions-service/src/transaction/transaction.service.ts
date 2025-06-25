@@ -60,22 +60,6 @@ export class TransactionService {
   }
 
   /**
-   * Calcula comisión según el tipo de transacción y monto
-   */
-  private calcularComision(tipo: TipoTransaccion, monto: number): number {
-    switch (tipo) {
-      case TipoTransaccion.TRANSFERENCIA:
-        return monto * 0.001; // 0.1%
-      case TipoTransaccion.RETIRO:
-        return 2.00; // $2 fijo
-      case TipoTransaccion.DEPOSITO:
-        return 0; // Sin comisión
-      default:
-        return 0;
-    }
-  }
-
-  /**
    * TRANSFERENCIAS
    */
   async transferir(transferirDto: TransferirDto, usuarioId: string): Promise<Transaccion> {
@@ -94,10 +78,8 @@ export class TransactionService {
       throw new BadRequestException('No tienes permiso para usar esta cuenta origen');
     }
 
-    const comision = this.calcularComision(TipoTransaccion.TRANSFERENCIA, transferirDto.monto);
-    const montoTotal = transferirDto.monto + comision;
-
-    if (cuentaOrigen.monto_actual < montoTotal) {
+    // Sin comisión - solo verificar el monto solicitado
+    if (cuentaOrigen.monto_actual < transferirDto.monto) {
       throw new BadRequestException('Saldo insuficiente para realizar la transferencia');
     }
 
@@ -117,15 +99,16 @@ export class TransactionService {
       descripcion: transferirDto.descripcion || 'Transferencia entre cuentas',
       estado: restriccionesValidas.requiere_autenticacion ? 
         EstadoTransaccion.PENDIENTE : EstadoTransaccion.AUTORIZADA,
-      comision,
       usuario_ejecutor: usuarioId,
       requiere_autenticacion: restriccionesValidas.requiere_autenticacion,
     });
 
     const transaccionGuardada = await nuevaTransaccion.save();
 
-    // EL MICROCONTRONLADOR HACE ESTO
-    
+    // Si no requiere autenticación, procesar inmediatamente
+    if (!restriccionesValidas.requiere_autenticacion) {
+      await this.procesarTransaccion(transaccionGuardada._id.toString());
+    }
 
     return transaccionGuardada;
   }
@@ -138,16 +121,11 @@ export class TransactionService {
 
     const cuentaOrigen = await this.obtenerCuentaPorNumero(validarDto.numero_cuenta_origen);
 
-    const tipoTransaccion = validarDto.tipo as TipoTransaccion;
-    const comision = this.calcularComision(tipoTransaccion, validarDto.monto);
-    const montoTotal = validarDto.monto + comision;
-
     const validaciones = {
-      saldo_suficiente: cuentaOrigen.monto_actual >= montoTotal,
+      saldo_suficiente: cuentaOrigen.monto_actual >= validarDto.monto,
       cuenta_activa: cuentaOrigen.estado === 'ACTIVA',
       monto_valido: validarDto.monto > 0,
-      comision_calculada: comision,
-      monto_total: montoTotal
+      monto_total: validarDto.monto // Monto total igual al monto solicitado
     };
 
     const restricciones = await this.verificarRestricciones(
@@ -225,7 +203,6 @@ export class TransactionService {
       }
     };
   }
-
 
   async obtenerMovimientosCuenta(cuentaId: string): Promise<Transaccion[]> {
     return this.transaccionModel
@@ -337,11 +314,10 @@ export class TransactionService {
   }
 
   private async procesarTransferencia(transaccion: Transaccion): Promise<void> {
-    // Debitar cuenta origen
     await firstValueFrom(
       this.accountsClient.send('accounts.actualizarSaldo', {
         cuentaId: transaccion.cuenta_origen,
-        monto: -(transaccion.monto + transaccion.comision)
+        monto: -transaccion.monto // Solo el monto
       })
     );
 
@@ -358,7 +334,7 @@ export class TransactionService {
       firstValueFrom(
         this.accountsClient.send('accounts.procesarMovimiento', {
           cuentaId: transaccion.cuenta_origen,
-          monto: -(transaccion.monto + transaccion.comision),
+          monto: -transaccion.monto, 
           movimientoId: transaccion._id
         })
       ),
@@ -371,8 +347,4 @@ export class TransactionService {
       )
     ]);
   }
-
-  
-
-
 }

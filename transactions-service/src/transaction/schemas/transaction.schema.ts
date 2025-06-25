@@ -58,8 +58,7 @@ export class Transaccion extends Document {
   })
   estado: EstadoTransaccion;
 
-  @Prop({ default: 0 })
-  comision: number;
+  // ❌ CAMPO COMISION ELIMINADO COMPLETAMENTE
 
   @Prop({ type: Date, default: null })
   fecha_procesamiento: Date;

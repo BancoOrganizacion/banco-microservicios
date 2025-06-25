@@ -254,34 +254,38 @@ export class CuentasService {
    * Este método se comunicará con el microservicio de movimientos cuando esté disponible
    */
   async getMovimientos(idUsuario: string, idCuenta: string): Promise<any[]> {
-    // Si idCuenta viene como 'id1,id2', tomar solo el primero y validar
-    const cuentaIdLimpio = (idCuenta || '').split(',')[0].trim();
-    if (!Types.ObjectId.isValid(cuentaIdLimpio)) {
-      throw new BadRequestException(`El parámetro idCuenta no es un ObjectId válido: ${cuentaIdLimpio}`);
-    }
-    const cuenta = await this.cuentaModel.findOne({ _id: cuentaIdLimpio }).exec();
-    if (!cuenta) {
-      throw new NotFoundException(`No se encontró la cuenta con ID ${cuentaIdLimpio}`);
-    }
-    // Buscar transacciones donde esta cuenta específica aparezca como origen o destino y estado válido
-    const query = {
-      $or: [
-        { cuenta_origen: cuenta._id },
-        { cuenta_destino: cuenta._id }
-      ],
-      estado: { $in: ['AUTORIZADA', 'COMPLETADA'] }
-    };
-    const transacciones = await this.trxModel.find(query).exec();
-    // Mapear las transacciones para devolver solo los datos relevantes
-    return transacciones.map(transaccion => ({
-      numero_transaccion: transaccion.numero_transaccion,
-      monto_total: transaccion.monto + (transaccion.comision || 0),
-      descripcion: transaccion.descripcion,
-      tipo: transaccion.cuenta_origen.toString() === cuenta._id.toString() ? 'SALIDA' : 'ENTRADA',
-      cuenta_origen: transaccion.cuenta_origen,
-      cuenta_destino: transaccion.cuenta_destino,
-      fecha: transaccion.createdAt,
-      titular_cuenta: cuenta.titular
+  // Si idCuenta viene como 'id1,id2', tomar solo el primero y validar
+  const cuentaIdLimpio = (idCuenta || '').split(',')[0].trim();
+  if (!Types.ObjectId.isValid(cuentaIdLimpio)) {
+    throw new BadRequestException(`El parámetro idCuenta no es un ObjectId válido: ${cuentaIdLimpio}`);
+  }
+  
+  const cuenta = await this.cuentaModel.findOne({ _id: cuentaIdLimpio }).exec();
+  if (!cuenta) {
+    throw new NotFoundException(`No se encontró la cuenta con ID ${cuentaIdLimpio}`);
+  }
+  
+  // Buscar transacciones donde esta cuenta específica aparezca como origen o destino y estado válido
+  const query = {
+    $or: [
+      { cuenta_origen: cuenta._id },
+      { cuenta_destino: cuenta._id }
+    ],
+    estado: { $in: ['AUTORIZADA', 'COMPLETADA'] }
+  };
+  
+  const transacciones = await this.trxModel.find(query).exec();
+  
+  // Mapear las transacciones para devolver solo los datos relevantes - SIN COMISIÓN
+  return transacciones.map(transaccion => ({
+    numero_transaccion: transaccion.numero_transaccion,
+    monto_total: transaccion.monto, // Solo el monto, sin comisión
+    descripcion: transaccion.descripcion,
+    tipo: transaccion.cuenta_origen.toString() === cuenta._id.toString() ? 'SALIDA' : 'ENTRADA',
+    cuenta_origen: transaccion.cuenta_origen,
+    cuenta_destino: transaccion.cuenta_destino,
+    fecha: transaccion.createdAt,
+    titular_cuenta: cuenta.titular,
     }));
   }
 
