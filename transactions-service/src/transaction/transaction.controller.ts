@@ -12,8 +12,6 @@ import {
 } from '@nestjs/common';
 import { TransactionService } from './transaction.service';
 import { TransferirDto } from './dto/transferencia.dto';
-import { DepositarDto } from './dto/deposito.dto';
-import { RetirarDto } from './dto/retiro.dto';
 import { ValidarTransaccionDto } from './dto/validar-transaccion.dto';
 import { AutorizarTransaccionDto } from './dto/autorizar-transaccion.dto';
 import { QueryTransaccionesDto } from './dto/query-transacciones.dto';
@@ -76,7 +74,6 @@ export class TransactionController {
             monto: { type: 'number' },
             estado: { type: 'string', example: 'PENDIENTE' },
             requiere_autenticacion: { type: 'boolean' },
-            comision: { type: 'number', example: 0 }, // Siempre 0
             fecha_creacion: { type: 'string', format: 'date-time' }
           }
         }
@@ -239,8 +236,9 @@ export class TransactionController {
           properties: {
             saldo_suficiente: { type: 'boolean', example: true },
             cuenta_activa: { type: 'boolean', example: true },
+            cuenta_destino_activa: { type: 'boolean', example: true },
             monto_valido: { type: 'boolean', example: true },
-            monto_total: { type: 'number', example: 1500.00 } // Igual al monto solicitado
+            monto_total: { type: 'number', example: 1500.00 }
           }
         },
         restricciones: {

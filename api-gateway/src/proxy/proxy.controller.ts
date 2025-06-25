@@ -797,7 +797,7 @@ async getMovimientosCuenta(@Req() req: Request, @Res() res: Response) {
 
   // ========================= ENDPOINTS DE TRANSACCIONES =========================
   
-  @ApiTags('transacciones')
+   @ApiTags('transacciones')
   @ApiOperation({ summary: 'Realizar transferencia entre cuentas usando números de cuenta' })
   @ApiBearerAuth('JWT-auth')
   @ApiBody({
@@ -847,7 +847,6 @@ async getMovimientosCuenta(@Req() req: Request, @Res() res: Response) {
           monto: 100.50,
           estado: 'COMPLETADA',
           requiere_autenticacion: false,
-          comision: 0.10,
           fecha_creacion: '2025-06-01T10:30:00.000Z'
         }
       }
@@ -922,7 +921,6 @@ async getMovimientosCuenta(@Req() req: Request, @Res() res: Response) {
         cuenta_origen_numero: '1234567890',
         cuenta_destino_numero: '0987654321',
         descripcion: 'Pago de servicios',
-        comision: 0.10,
         fecha_creacion: '2025-06-01T10:30:00.000Z'
       }
     }
@@ -935,67 +933,7 @@ async getMovimientosCuenta(@Req() req: Request, @Res() res: Response) {
   }
 
   @ApiTags('transacciones')
-  @ApiOperation({ summary: 'Realizar depósito en cuenta usando número de cuenta' })
-  @ApiBearerAuth('JWT-auth')
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        numero_cuenta_destino: {
-          type: 'string',
-          description: 'Número de cuenta destino (10 dígitos)',
-          example: '1234567890',
-          minLength: 10,
-          maxLength: 10
-        },
-        monto: {
-          type: 'number',
-          description: 'Monto a depositar',
-          example: 500.00,
-          minimum: 0.01
-        },
-        descripcion: {
-          type: 'string',
-          description: 'Descripción del depósito',
-          example: 'Depósito en efectivo'
-        },
-        referencia_externa: {
-          type: 'string',
-          description: 'Referencia externa del depósito',
-          example: 'DEP-2024-001'
-        }
-      },
-      required: ['numero_cuenta_destino', 'monto']
-    }
-  })
-  @ApiResponse({ 
-    status: 201, 
-    description: 'Depósito procesado exitosamente',
-    schema: {
-      example: {
-        success: true,
-        message: 'Depósito procesado exitosamente',
-        transaccion: {
-          _id: '507f1f77bcf86cd799439021',
-          numero_transaccion: 'TXN-1234567890-1235',
-          tipo: 'DEPOSITO',
-          monto: 500.00,
-          estado: 'COMPLETADA',
-          fecha_procesamiento: '2025-06-01T10:35:00.000Z'
-        }
-      }
-    }
-  })
-  @ApiResponse({ status: 400, description: 'Datos inválidos o cuenta no encontrada' })
-  @ApiResponse({ status: 401, description: 'No autorizado' })
-  @Post('transactions/transacciones/depositar')
-  async depositar(@Req() req: Request, @Res() res: Response) {
-    return this.handleProxyRequest('transactions', req, res);
-  }
-
-
-  @ApiTags('transacciones')
-  @ApiOperation({ summary: 'Validar si una transacción es posible usando números de cuenta' })
+  @ApiOperation({ summary: 'Validar si una transferencia es posible usando números de cuenta' })
   @ApiBearerAuth('JWT-auth')
   @ApiBody({
     schema: {
@@ -1010,25 +948,19 @@ async getMovimientosCuenta(@Req() req: Request, @Res() res: Response) {
         },
         monto: {
           type: 'number',
-          description: 'Monto de la transacción',
+          description: 'Monto de la transferencia',
           example: 1500.00,
           minimum: 0.01
         },
         numero_cuenta_destino: {
           type: 'string',
-          description: 'Número de cuenta destino (10 dígitos, solo para transferencias)',
+          description: 'Número de cuenta destino (10 dígitos)',
           example: '0987654321',
           minLength: 10,
           maxLength: 10
-        },
-        tipo: {
-          type: 'string',
-          description: 'Tipo de transacción',
-          example: 'TRANSFERENCIA',
-          enum: ['TRANSFERENCIA', 'DEPOSITO', 'RETIRO']
         }
       },
-      required: ['numero_cuenta_origen', 'monto', 'tipo']
+      required: ['numero_cuenta_origen', 'monto', 'numero_cuenta_destino']
     }
   })
   @ApiResponse({ 
@@ -1040,9 +972,9 @@ async getMovimientosCuenta(@Req() req: Request, @Res() res: Response) {
         validaciones: {
           saldo_suficiente: true,
           cuenta_activa: true,
+          cuenta_destino_activa: true,
           monto_valido: true,
-          comision_calculada: 1.50,
-          monto_total: 1501.50
+          monto_total: 1500.00
         },
         restricciones: {
           requiere_autenticacion: true,
@@ -1092,6 +1024,57 @@ async getMovimientosCuenta(@Req() req: Request, @Res() res: Response) {
   @ApiResponse({ status: 401, description: 'No autorizado' })
   @Get('transactions/transacciones/restricciones/:numeroCuenta/:monto')
   async verificarRestricciones(@Req() req: Request, @Res() res: Response) {
+    return this.handleProxyRequest('transactions', req, res);
+  }
+
+  @ApiTags('transacciones')
+  @ApiOperation({ summary: 'Autorizar transacción con autenticación biométrica' })
+  @ApiBearerAuth('JWT-auth')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        transaccion_id: {
+          type: 'string',
+          description: 'ID de la transacción a autorizar',
+          example: '507f1f77bcf86cd799439013'
+        },
+        codigo_verificacion: {
+          type: 'string',
+          description: 'Código de verificación',
+          example: '1234'
+        },
+        patron_autenticacion_id: {
+          type: 'string',
+          description: 'ID del patrón de autenticación usado',
+          example: '507f1f77bcf86cd799439014'
+        }
+      },
+      required: ['transaccion_id', 'codigo_verificacion']
+    }
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Transacción autorizada y procesada',
+    schema: {
+      example: {
+        success: true,
+        message: 'Transacción autorizada y procesada exitosamente',
+        transaccion: {
+          _id: '507f1f77bcf86cd799439013',
+          numero_transaccion: 'TXN-1234567890-1235',
+          estado: 'COMPLETADA',
+          fecha_autorizacion: '2025-06-01T10:35:00.000Z',
+          fecha_procesamiento: '2025-06-01T10:35:30.000Z'
+        }
+      }
+    }
+  })
+  @ApiResponse({ status: 400, description: 'Código inválido o transacción no válida' })
+  @ApiResponse({ status: 404, description: 'Transacción no encontrada' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
+  @Post('transactions/transacciones/autorizar')
+  async autorizarTransaccion(@Req() req: Request, @Res() res: Response) {
     return this.handleProxyRequest('transactions', req, res);
   }
 }
