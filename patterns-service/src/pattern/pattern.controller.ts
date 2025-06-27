@@ -65,12 +65,6 @@ export class PatternController {
         value: {
           dedosPatronIds: ['dedo_pulgar_derecho_123', 'dedo_indice_derecho_456', 'dedo_medio_izquierdo_789']
         }
-      },
-      ejemplo2: {
-        summary: 'Patrón con 2 dedos',
-        value: {
-          dedosPatronIds: ['dedo_pulgar_izquierdo_abc', 'dedo_anular_derecho_def']
-        }
       }
     }
   })

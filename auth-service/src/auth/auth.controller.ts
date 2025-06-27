@@ -176,7 +176,7 @@ export class AuthController {
   @Post('codigo/usuario')
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtAuthGuard,RoleGuard)
-  @Roles('6807f1cb168fadf2ecd43c4d')
+  @Roles('683512630ce7445788c8d800')
   async getUserByCode(@Body() getUserByCodeDto: GetUserByCodeDto) {
     try {
       const userId = await this.authService.getUserIdFromCode(getUserByCodeDto.code);

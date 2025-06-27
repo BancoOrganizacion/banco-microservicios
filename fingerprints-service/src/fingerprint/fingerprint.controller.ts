@@ -1,4 +1,4 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Post, UseGuards } from '@nestjs/common';
 import { FingerprintService } from './fingerprint.service';
 import { Dedos } from 'shared-models';
 import { CreateFingerpatternDto } from 'shared-models';
@@ -53,8 +53,8 @@ export class FingerprintController {
     @UseGuards(JwtDataGuard)
     @ApiBearerAuth('JWT-auth')
     @ApiOperation({ summary: 'Obtener dedos registrados del usuario autenticado' })
-    @ApiResponse({ 
-        status: 200, 
+    @ApiResponse({
+        status: 200,
         description: 'Dedos registrados encontrados para el usuario autenticado',
         schema: {
             type: 'array',
@@ -75,4 +75,64 @@ export class FingerprintController {
         //Llamar al servicio con el ID del usuario del JWT
         return this.fingerprintService.getFingersByAccount(userId);
     }
+    @Post('get-account')
+    @UseGuards(JwtDataGuard)
+    @ApiBearerAuth('JWT-auth')
+    @ApiOperation({ summary: 'Obtener cuenta por huella dactilar' })
+    @ApiBody({
+        description: 'ID del sensor para identificar al usuario',
+        schema: {
+            type: 'object',
+            properties: {
+                sensorId: {
+                    type: 'string',
+                    description: 'ID del sensor de huellas (viene del Arduino)',
+                    example: '42'
+                }
+            },
+            required: ['sensorId']
+        }
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Usuario identificado correctamente por huella',
+        schema: {
+            type: 'object',
+            properties: {
+                found: { type: 'boolean', example: true },
+                accountId: { type: 'string', example: '60d0fe4f5311236168a109ca' },
+                personaId: { type: 'string', example: '60d0fe4f5311236168a109cb' },
+                fingerInfo: {
+                    type: 'object',
+                    properties: {
+                        dedo: { type: 'string', example: 'INDICE' },
+                        orden: { type: 'number', example: 2 }
+                    }
+                }
+            }
+        }
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Huella no encontrada',
+        schema: {
+            type: 'object',
+            properties: {
+                found: { type: 'boolean', example: false },
+                message: { type: 'string', example: 'Huella no encontrada' }
+            }
+        }
+    })
+    @ApiResponse({ status: 400, description: 'Datos inválidos - sensorId requerido' })
+    @ApiResponse({ status: 401, description: 'No autorizado - Token requerido' })
+    @ApiResponse({ status: 403, description: 'Token inválido' })
+    async getAccountIdByFingerprint(@Body() body: { sensorId: string }) {
+        // Validar que se envíe el sensorId
+        if (!body.sensorId) {
+            throw new BadRequestException('sensorId es requerido');
+        }
+        // Llamar al servicio para identificar usuario por huella
+        return this.fingerprintService.getAccountIdByFingerprint(body.sensorId);
+    }
+
 }
