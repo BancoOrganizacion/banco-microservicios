@@ -1,8 +1,19 @@
 // src/pattern/dto/pattern.dto.ts
-import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsString, IsNotEmpty, ArrayNotEmpty } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsArray, IsString, IsNotEmpty, ArrayNotEmpty, Length, IsOptional } from 'class-validator';
 
 export class CrearPatronDto {
+  @ApiProperty({
+    description: 'Nombre descriptivo del patrón de autenticación',
+    example: 'Patrón Principal',
+    maxLength: 50,
+    minLength: 1
+  })
+  @IsString({ message: 'El nombre debe ser un string' })
+  @IsNotEmpty({ message: 'El nombre no puede estar vacío' })
+  @Length(1, 50, { message: 'El nombre debe tener entre 1 y 50 caracteres' })
+  nombre: string;
+
   @ApiProperty({
     description: 'Array de IDs de dedos patrón para crear el patrón de autenticación',
     example: ['dedo_pulgar_derecho_123', 'dedo_indice_derecho_456', 'dedo_medio_izquierdo_789'],
@@ -21,6 +32,12 @@ export class PatronAutenticacionResponse {
     example: 'patron_abc123def456',
   })
   id: string;
+
+  @ApiProperty({
+    description: 'Nombre descriptivo del patrón',
+    example: 'Patrón Principal',
+  })
+  nombre: string;
 
   @ApiProperty({
     description: 'ID de la cuenta de la aplicación (obtenido del JWT)',
@@ -108,6 +125,7 @@ export class AutenticacionPatronResponse {
     description: 'Información del patrón para autenticación',
     example: {
       id: 'patron_abc123def456',
+      nombre: 'Patrón Principal',
       idCuentaApp: 'cuenta_usuario_789',
       activo: true,
       dedosPatronIds: ['dedo_pulgar_derecho_123', 'dedo_indice_derecho_456']
@@ -115,6 +133,7 @@ export class AutenticacionPatronResponse {
   })
   patron: {
     id: string;
+    nombre: string;
     idCuentaApp: string;
     activo: boolean;
     dedosPatronIds: string[];

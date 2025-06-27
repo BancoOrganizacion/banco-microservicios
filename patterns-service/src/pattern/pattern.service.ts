@@ -20,6 +20,7 @@ export class PatternService {
    */
  async crearPatronAutenticacion(
   idUsuario: string,
+  nombre: string,
   dedosPatronIds: string[]
 ): Promise<PatronAutenticacion> {
   try {
@@ -46,6 +47,7 @@ export class PatternService {
     // Construir nuevo patrón de autenticación
     const nuevoPatron = new this.patronAutenticacionModel({
       id_patron_autenticacion: new Types.ObjectId(),
+      nombre: nombre.trim(),
       fecha_creacion: new Date(),
       activo: true,
       dedos_patron: dedosPatronIds, // el orden se refleja en el índice del array

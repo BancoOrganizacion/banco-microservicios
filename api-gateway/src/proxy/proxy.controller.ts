@@ -493,6 +493,13 @@ async getMovimientosCuenta(@Req() req: Request, @Res() res: Response) {
     schema: {
       type: 'object',
       properties: {
+        nombre: {
+          type: 'string',
+          description: 'Nombre descriptivo del patrón de autenticación',
+          example: 'Patrón Principal',
+          maxLength: 50,
+          minLength: 1
+        },
         dedosPatronIds: {
           type: 'array',
           items: { type: 'string' },
@@ -501,7 +508,7 @@ async getMovimientosCuenta(@Req() req: Request, @Res() res: Response) {
           minItems: 1
         }
       },
-      required: ['dedosPatronIds']
+      required: ['nombre', 'dedosPatronIds']
     }
   })
   @ApiResponse({ status: 201, description: 'Patrón creado exitosamente' })
@@ -571,6 +578,7 @@ async getMovimientosCuenta(@Req() req: Request, @Res() res: Response) {
       example: [
         {
           id: 'patron_abc123def456',
+          nombre: 'Patrón Principal',
           idCuentaApp: 'cuenta_usuario_789',
           dedosPatronIds: ['dedo_pulgar_derecho_123', 'dedo_indice_derecho_456'],
           activo: true,

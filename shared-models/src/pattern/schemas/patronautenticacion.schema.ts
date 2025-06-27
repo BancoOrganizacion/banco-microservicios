@@ -15,6 +15,14 @@ export class PatronAutenticacion extends Document {
   id_patron_autenticacion: MongooseSchema.Types.ObjectId;
 
   @Prop({
+    type: String,
+    required: true,
+    trim: true,
+    maxlength: 50
+  })
+  nombre: string;
+
+  @Prop({
     type: Date,
     default: Date.now,
     required: true
