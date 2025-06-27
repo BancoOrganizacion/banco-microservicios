@@ -5,8 +5,6 @@ import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
 import { Transaccion, TipoTransaccion, EstadoTransaccion } from './schemas/transaction.schema';
 import { TransferirDto } from './dto/transferencia.dto';
-import { DepositarDto } from './dto/deposito.dto';
-import { RetirarDto } from './dto/retiro.dto';
 import { ValidarTransaccionDto } from './dto/validar-transaccion.dto';
 import { AutorizarTransaccionDto } from './dto/autorizar-transaccion.dto';
 import { QueryTransaccionesDto } from './dto/query-transacciones.dto';
@@ -60,22 +58,6 @@ export class TransactionService {
   }
 
   /**
-   * Calcula comisión según el tipo de transacción y monto
-   */
-  private calcularComision(tipo: TipoTransaccion, monto: number): number {
-    switch (tipo) {
-      case TipoTransaccion.TRANSFERENCIA:
-        return monto * 0.001; // 0.1%
-      case TipoTransaccion.RETIRO:
-        return 2.00; // $2 fijo
-      case TipoTransaccion.DEPOSITO:
-        return 0; // Sin comisión
-      default:
-        return 0;
-    }
-  }
-
-  /**
    * TRANSFERENCIAS
    */
   async transferir(transferirDto: TransferirDto, usuarioId: string): Promise<Transaccion> {
@@ -94,10 +76,8 @@ export class TransactionService {
       throw new BadRequestException('No tienes permiso para usar esta cuenta origen');
     }
 
-    const comision = this.calcularComision(TipoTransaccion.TRANSFERENCIA, transferirDto.monto);
-    const montoTotal = transferirDto.monto + comision;
-
-    if (cuentaOrigen.monto_actual < montoTotal) {
+    // Verificar saldo suficiente
+    if (cuentaOrigen.monto_actual < transferirDto.monto) {
       throw new BadRequestException('Saldo insuficiente para realizar la transferencia');
     }
 
@@ -112,20 +92,21 @@ export class TransactionService {
       numero_transaccion: numeroTransaccion,
       tipo: TipoTransaccion.TRANSFERENCIA,
       monto: transferirDto.monto,
-      cuenta_origen: cuentaOrigen._id, // Guardamos el ObjectId internamente
-      cuenta_destino: cuentaDestino._id, // Guardamos el ObjectId internamente
+      cuenta_origen: cuentaOrigen._id,
+      cuenta_destino: cuentaDestino._id,
       descripcion: transferirDto.descripcion || 'Transferencia entre cuentas',
       estado: restriccionesValidas.requiere_autenticacion ? 
         EstadoTransaccion.PENDIENTE : EstadoTransaccion.AUTORIZADA,
-      comision,
       usuario_ejecutor: usuarioId,
       requiere_autenticacion: restriccionesValidas.requiere_autenticacion,
     });
 
     const transaccionGuardada = await nuevaTransaccion.save();
 
-    // EL MICROCONTRONLADOR HACE ESTO
-    
+    // Si no requiere autenticación, procesar inmediatamente
+    if (!restriccionesValidas.requiere_autenticacion) {
+      await this.procesarTransaccion(transaccionGuardada._id.toString());
+    }
 
     return transaccionGuardada;
   }
@@ -137,28 +118,20 @@ export class TransactionService {
     this.logger.debug(`Validando transacción: ${JSON.stringify(validarDto)}`);
 
     const cuentaOrigen = await this.obtenerCuentaPorNumero(validarDto.numero_cuenta_origen);
-
-    const tipoTransaccion = validarDto.tipo as TipoTransaccion;
-    const comision = this.calcularComision(tipoTransaccion, validarDto.monto);
-    const montoTotal = validarDto.monto + comision;
+    const cuentaDestino = await this.obtenerCuentaPorNumero(validarDto.numero_cuenta_destino);
 
     const validaciones = {
-      saldo_suficiente: cuentaOrigen.monto_actual >= montoTotal,
+      saldo_suficiente: cuentaOrigen.monto_actual >= validarDto.monto,
       cuenta_activa: cuentaOrigen.estado === 'ACTIVA',
+      cuenta_destino_activa: cuentaDestino.estado === 'ACTIVA',
       monto_valido: validarDto.monto > 0,
-      comision_calculada: comision,
-      monto_total: montoTotal
+      monto_total: validarDto.monto
     };
 
     const restricciones = await this.verificarRestricciones(
       cuentaOrigen._id.toString(),
       validarDto.monto
     );
-
-    if (validarDto.numero_cuenta_destino) {
-      const cuentaDestino = await this.obtenerCuentaPorNumero(validarDto.numero_cuenta_destino);
-      validaciones['cuenta_destino_activa'] = cuentaDestino.estado === 'ACTIVA';
-    }
 
     return {
       es_valida: Object.values(validaciones).every(v => v === true),
@@ -204,13 +177,12 @@ export class TransactionService {
     const transaccionesEnriquecidas = await Promise.all(
       transacciones.map(async (transaccion) => {
         const cuentaOrigen = await this.obtenerCuentaPorId(transaccion.cuenta_origen.toString());
-        const cuentaDestino = transaccion.cuenta_destino ? 
-          await this.obtenerCuentaPorId(transaccion.cuenta_destino.toString()) : null;
+        const cuentaDestino = await this.obtenerCuentaPorId(transaccion.cuenta_destino.toString());
 
         return {
           ...transaccion.toObject(),
           cuenta_origen_numero: cuentaOrigen.numero_cuenta,
-          cuenta_destino_numero: cuentaDestino?.numero_cuenta || null
+          cuenta_destino_numero: cuentaDestino.numero_cuenta
         };
       })
     );
@@ -225,7 +197,6 @@ export class TransactionService {
       }
     };
   }
-
 
   async obtenerMovimientosCuenta(cuentaId: string): Promise<Transaccion[]> {
     return this.transaccionModel
@@ -313,11 +284,7 @@ export class TransactionService {
         throw new BadRequestException('Transacción no autorizada para procesamiento');
       }
 
-      switch (transaccion.tipo) {
-        case TipoTransaccion.TRANSFERENCIA:
-          await this.procesarTransferencia(transaccion);
-          break;
-      }
+      await this.procesarTransferencia(transaccion);
 
       transaccion.estado = EstadoTransaccion.COMPLETADA;
       transaccion.fecha_procesamiento = new Date();
@@ -341,7 +308,7 @@ export class TransactionService {
     await firstValueFrom(
       this.accountsClient.send('accounts.actualizarSaldo', {
         cuentaId: transaccion.cuenta_origen,
-        monto: -(transaccion.monto + transaccion.comision)
+        monto: -transaccion.monto
       })
     );
 
@@ -358,7 +325,7 @@ export class TransactionService {
       firstValueFrom(
         this.accountsClient.send('accounts.procesarMovimiento', {
           cuentaId: transaccion.cuenta_origen,
-          monto: -(transaccion.monto + transaccion.comision),
+          monto: -transaccion.monto, 
           movimientoId: transaccion._id
         })
       ),
@@ -371,8 +338,4 @@ export class TransactionService {
       )
     ]);
   }
-
-  
-
-
 }

@@ -22,10 +22,10 @@ export class ProxyService {
       accounts: configService.get('ACCOUNTS_SERVICE_URL', 'http://localhost:3003'),
       fingerprints: configService.get('FINGERPRINT_SERVICE_URL','http://localhost:3008'),
       patterns: configService.get('PATTERNS_SERVICE_URL','http://localhost:3009/patterns'),
-      transactions: configService.get('TRANSACTIONS_SERVICE_URL','http://localhost:3004'), // 👈 NUEVO
+      transactions: configService.get('TRANSACTIONS_SERVICE_URL','http://localhost:3004'), // NUEVO
     };
   }
-
+s
   async forwardRequest(
     service: string,
     path: string,

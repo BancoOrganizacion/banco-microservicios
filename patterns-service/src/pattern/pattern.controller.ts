@@ -63,7 +63,15 @@ export class PatternController {
       ejemplo1: {
         summary: 'Patrón con 3 dedos',
         value: {
+          nombre: 'Patrón Principal',
           dedosPatronIds: ['dedo_pulgar_derecho_123', 'dedo_indice_derecho_456', 'dedo_medio_izquierdo_789']
+        }
+      },
+      ejemplo2: {
+        summary: 'Patrón con 2 dedos',
+        value: {
+          nombre: 'Patrón Secundario',
+          dedosPatronIds: ['dedo_pulgar_izquierdo_abc', 'dedo_anular_derecho_def']
         }
       }
     }
@@ -100,13 +108,12 @@ export class PatternController {
     @Body() crearPatronDto: CrearPatronDto,
     @Request() req: any // req.user.idCuentaApp
   ): Promise<PatronAutenticacion> {
-    const { dedosPatronIds } = crearPatronDto;
+    const { nombre, dedosPatronIds } = crearPatronDto;
 
     // Temporal: simular idCuentaApp hasta implementar JWT
     const idUsuario = req.user?.id_usuario;
 
-
-    return this.patternService.crearPatronAutenticacion(idUsuario, dedosPatronIds);
+    return this.patternService.crearPatronAutenticacion(idUsuario, nombre, dedosPatronIds);
   }
 
   @Get(':id')
@@ -203,12 +210,12 @@ export class PatternController {
     }
   })
   async obtenerPatronesPorCuenta(
-    @Request() req: any
+    @Query('userId') userId?: string,
+    @Request() req?: any
   ) {
     // Temporal: validar que se envíe cuenta hasta implementar JWT
     const idUsuario = req.user.id_usuario;
 
-    // TODO: Usar req.user.idCuentaApp del JWT
     return this.patternService.obtenerPatronesPorCuenta(idUsuario);
   }
 

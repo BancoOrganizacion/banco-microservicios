@@ -182,7 +182,25 @@ export class CuentasService {
    * Añade una restricción a una cuenta
    */
   async addRestriccion(id: string, restriccion: CreateRestriccionDto): Promise<Cuenta> {
-    // Validaciones existentes...
+    const cuenta = await this.cuentaModel.findById(id).exec();
+    
+    if (!cuenta) {
+      throw new NotFoundException(`Cuenta con ID ${id} no encontrada`);
+    }
+    
+    // Validar que monto_desde sea menor que monto_hasta
+    if (restriccion.monto_desde >= restriccion.monto_hasta) {
+      throw new BadRequestException('El monto inicial debe ser menor que el monto final');
+    }
+    
+    // Verificar solapamiento con otras restricciones (sin permitir valores límite compartidos)
+    const solapamiento = cuenta.restricciones.some(r => 
+    restriccion.monto_desde <= r.monto_hasta && restriccion.monto_hasta >= r.monto_desde
+  );
+    
+    if (solapamiento) {
+      throw new BadRequestException('Los rangos de monto se solapan con restricciones existentes');
+    }
     
     // Crear explícitamente un objeto con la estructura exacta esperada por el esquema
     const nuevaRestriccion = {
@@ -195,7 +213,6 @@ export class CuentasService {
       nuevaRestriccion['patron_autenticacion'] = new Types.ObjectId(restriccion.patron_autenticacion);
     }
 
-    
     console.log("Nueva restricción a guardar:", nuevaRestriccion);
 
     // Usar findByIdAndUpdate con $push, pero asegurándonos de dar el formato correcto
@@ -204,7 +221,9 @@ export class CuentasService {
       { $push: { restricciones: nuevaRestriccion } },
       { new: true }
     ).exec();
+    
     console.log("Cuenta actualizada:", JSON.stringify(cuentaActualizada, null, 2));
+    
     if (!cuentaActualizada) {
       throw new NotFoundException(`Cuenta con ID ${id} no encontrada`);
     }
@@ -235,36 +254,40 @@ export class CuentasService {
    * Este método se comunicará con el microservicio de movimientos cuando esté disponible
    */
   async getMovimientos(idUsuario: string, idCuenta: string): Promise<any[]> {
-  // 1. Buscar la cuenta específica (sin verificar titular para admins)
-  const cuenta = await this.cuentaModel.findOne({ _id: idCuenta }).exec();
-  
-  if (!cuenta) {
-    throw new NotFoundException(`No se encontró la cuenta con ID ${idCuenta}`);
+  // Si idCuenta viene como 'id1,id2', tomar solo el primero y validar
+  const cuentaIdLimpio = (idCuenta || '').split(',')[0].trim();
+  if (!Types.ObjectId.isValid(cuentaIdLimpio)) {
+    throw new BadRequestException(`El parámetro idCuenta no es un ObjectId válido: ${cuentaIdLimpio}`);
   }
   
-  // 2. Buscar transacciones donde esta cuenta específica aparezca como origen o destino
-  const transacciones = await this.trxModel.find({
+  const cuenta = await this.cuentaModel.findOne({ _id: cuentaIdLimpio }).exec();
+  if (!cuenta) {
+    throw new NotFoundException(`No se encontró la cuenta con ID ${cuentaIdLimpio}`);
+  }
+  
+  // Buscar transacciones donde esta cuenta específica aparezca como origen o destino y estado válido
+  const query = {
     $or: [
       { cuenta_origen: cuenta._id },
       { cuenta_destino: cuenta._id }
-    ]
-  }).exec();
+    ],
+    estado: { $in: ['AUTORIZADA', 'COMPLETADA'] }
+  };
   
-  // 3. Mapear las transacciones para devolver solo los datos relevantes
-  const movimientos = transacciones.map(transaccion => ({
+  const transacciones = await this.trxModel.find(query).exec();
+  
+  // Mapear las transacciones para devolver solo los datos relevantes - SIN COMISIÓN
+  return transacciones.map(transaccion => ({
     numero_transaccion: transaccion.numero_transaccion,
-    monto_total: transaccion.monto + (transaccion.comision || 0),
+    monto_total: transaccion.monto, // Solo el monto, sin comisión
     descripcion: transaccion.descripcion,
     tipo: transaccion.cuenta_origen.toString() === cuenta._id.toString() ? 'SALIDA' : 'ENTRADA',
     cuenta_origen: transaccion.cuenta_origen,
     cuenta_destino: transaccion.cuenta_destino,
     fecha: transaccion.createdAt,
-    // Info adicional para admins
-    titular_cuenta: cuenta.titular
-  }));
-  
-  return movimientos;
-}
+    titular_cuenta: cuenta.titular,
+    }));
+  }
 
 // OPCIONAL: Método para obtener todas las cuentas del usuario (útil para el frontend)
 async getCuentasUsuario(idUsuario: string): Promise<any[]> {

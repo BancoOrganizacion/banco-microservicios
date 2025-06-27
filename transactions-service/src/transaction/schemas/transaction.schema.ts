@@ -2,9 +2,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Schema as MongooseSchema } from 'mongoose';
 
 export enum TipoTransaccion {
-  TRANSFERENCIA = 'TRANSFERENCIA',
-  DEPOSITO = 'DEPOSITO',
-  RETIRO = 'RETIRO',
+  TRANSFERENCIA = 'TRANSFERENCIA'
 }
 
 export enum EstadoTransaccion {
@@ -44,9 +42,9 @@ export class Transaccion extends Document {
   @Prop({ 
     type: MongooseSchema.Types.ObjectId, 
     ref: 'Cuenta',
-    required: false
+    required: true  // Ahora siempre requerido para transferencias
   })
-  cuenta_destino?: MongooseSchema.Types.ObjectId;
+  cuenta_destino: MongooseSchema.Types.ObjectId;
 
   @Prop()
   descripcion: string;
@@ -57,9 +55,6 @@ export class Transaccion extends Document {
     default: EstadoTransaccion.PENDIENTE 
   })
   estado: EstadoTransaccion;
-
-  @Prop({ default: 0 })
-  comision: number;
 
   @Prop({ type: Date, default: null })
   fecha_procesamiento: Date;

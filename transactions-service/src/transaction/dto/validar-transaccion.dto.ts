@@ -1,5 +1,5 @@
-import { IsString, IsNotEmpty, IsNumber, IsOptional, Min, Length } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsString, IsNotEmpty, IsNumber, Min, Length } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class ValidarTransaccionDto {
   @ApiProperty({
@@ -14,30 +14,21 @@ export class ValidarTransaccionDto {
   numero_cuenta_origen: string;
 
   @ApiProperty({
-    description: 'Monto de la transacción',
+    description: 'Monto de la transferencia',
     example: 1500.00
   })
   @IsNumber()
   @Min(0.01, { message: 'El monto debe ser mayor a 0' })
   monto: number;
 
-  @ApiPropertyOptional({
-    description: 'Número de cuenta destino (10 dígitos, solo para transferencias)',
+  @ApiProperty({
+    description: 'Número de cuenta destino (10 dígitos)',
     example: '0987654321',
     minLength: 10,
     maxLength: 10
   })
   @IsString()
-  @IsOptional()
-  @Length(10, 10, { message: 'El número de cuenta debe tener exactamente 10 dígitos' })
-  numero_cuenta_destino?: string;
-
-  @ApiProperty({
-    description: 'Tipo de transacción',
-    example: 'TRANSFERENCIA',
-    enum: ['TRANSFERENCIA', 'DEPOSITO', 'RETIRO']
-  })
-  @IsString()
   @IsNotEmpty()
-  tipo: string;
+  @Length(10, 10, { message: 'El número de cuenta debe tener exactamente 10 dígitos' })
+  numero_cuenta_destino: string;
 }

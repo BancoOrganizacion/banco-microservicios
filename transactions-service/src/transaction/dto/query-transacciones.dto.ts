@@ -1,6 +1,7 @@
 import { IsOptional, IsDateString, IsEnum, IsNumber } from 'class-validator';
 import { Transform } from 'class-transformer';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+
 export class QueryTransaccionesDto {
   @ApiPropertyOptional({
     description: 'Fecha de inicio para filtrar',
@@ -17,14 +18,6 @@ export class QueryTransaccionesDto {
   @IsOptional()
   @IsDateString()
   fecha_fin?: string;
-
-  @ApiPropertyOptional({
-    description: 'Tipo de transacción',
-    enum: ['TRANSFERENCIA', 'DEPOSITO', 'RETIRO']
-  })
-  @IsOptional()
-  @IsEnum(['TRANSFERENCIA', 'DEPOSITO', 'RETIRO'])
-  tipo?: string;
 
   @ApiPropertyOptional({
     description: 'Estado de la transacción',
