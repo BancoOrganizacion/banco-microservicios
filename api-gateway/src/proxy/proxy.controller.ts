@@ -537,6 +537,35 @@ async getMovimientosCuenta(@Req() req: Request, @Res() res: Response) {
   }
 
   @ApiTags('patterns')
+  @ApiOperation({ summary: 'Obtener información básica del patrón' })
+  @ApiParam({
+    name: 'id',
+    type: 'string',
+    description: 'ID único del patrón de autenticación',
+    example: 'patron_abc123def456'
+  })
+  @ApiBearerAuth('JWT-auth')
+  @ApiResponse({
+    status: 200,
+    description: 'Información básica del patrón obtenida exitosamente',
+    schema: {
+      example: {
+        _id: 'patron_abc123def456',
+        nombre: 'Patrón Principal',
+        fecha_creacion: '2025-06-26T20:44:27.000Z',
+        activo: true,
+        cantidadDedos: 3
+      }
+    }
+  })
+  @ApiResponse({ status: 404, description: 'Patrón no encontrado' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
+  @Get('patterns/:id/basico')
+  async obtenerPatronBasico(@Req() req: Request, @Res() res: Response) {
+    return this.handleProxyRequest('patterns', req, res);
+  }
+
+  @ApiTags('patterns')
   @ApiOperation({ summary: 'Obtener dedos patrón' })
   @ApiParam({ 
     name: 'id', 

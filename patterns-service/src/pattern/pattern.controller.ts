@@ -312,4 +312,50 @@ export class PatternController {
   async obtenerParaAutenticacion(@Param('id') patronId: string) {
     return this.patternService.obtenerPatronParaAutenticacion(patronId);
   }
+
+  @Get(':id/basico')
+  @ApiOperation({
+    summary: 'Obtener información básica del patrón',
+    description: 'Obtiene solo la información básica de un patrón (nombre, fecha, estado) sin detalles complejos',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'ID único del patrón de autenticación',
+    example: 'patron_abc123def456',
+    schema: { type: 'string' }
+  })
+  @ApiOkResponse({
+    description: 'Información básica del patrón obtenida exitosamente',
+    schema: {
+      type: 'object',
+      properties: {
+        _id: { type: 'string', example: 'patron_abc123def456' },
+        nombre: { type: 'string', example: 'Patrón Principal' },
+        fecha_creacion: { type: 'string', format: 'date-time' },
+        activo: { type: 'boolean', example: true },
+        cantidadDedos: { type: 'number', example: 3 }
+      }
+    }
+  })
+  @ApiNotFoundResponse({
+    description: 'Patrón no encontrado',
+    schema: {
+      example: {
+        statusCode: 404,
+        message: 'Patrón con ID patron_abc123def456 no encontrado',
+        error: 'Not Found',
+        timestamp: '2025-05-29T10:30:00.000Z',
+        path: '/patterns/patron_abc123def456/basico'
+      },
+    },
+  })
+  async obtenerPatronBasico(@Param('id') patronId: string): Promise<{
+    _id: string;
+    nombre: string;
+    fecha_creacion: Date;
+    activo: boolean;
+    cantidadDedos: number;
+  }> {
+    return this.patternService.obtenerPatronBasico(patronId);
+  }
 }

@@ -206,4 +206,37 @@ export class PatternService {
       throw error;
     }
   }
+
+  /**
+   * Obtener información básica del patrón
+   */
+  async obtenerPatronBasico(patronId: string): Promise<{
+    _id: string;
+    nombre: string;
+    fecha_creacion: Date;
+    activo: boolean;
+    cantidadDedos: number;
+  }> {
+    try {
+      const patron = await this.patronAutenticacionModel
+        .findById(patronId)
+        .select('nombre fecha_creacion activo dedos_patron')
+        .exec();
+
+      if (!patron) {
+        throw new NotFoundException(`Patrón con ID ${patronId} no encontrado`);
+      }
+
+      return {
+        _id: patron._id.toString(),
+        nombre: patron.nombre,
+        fecha_creacion: patron.fecha_creacion,
+        activo: patron.activo,
+        cantidadDedos: patron.dedos_patron ? patron.dedos_patron.length : 0
+      };
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      throw new BadRequestException(`Error al obtener información del patrón: ${error.message}`);
+    }
+  }
 }
