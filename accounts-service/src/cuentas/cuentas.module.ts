@@ -3,14 +3,15 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { CuentasController } from './cuentas.controller';
 import { CuentasService } from './cuentas.service';
-import { Cuenta, CuentaSchema } from 'shared-models';
+import { Cuenta, CuentaSchema, PatronAutenticacion, PatronAutenticacionSchema } from 'shared-models';
 import { Transaccion,TransaccionSchema } from 'shared-models';
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: Cuenta.name, schema: CuentaSchema },
-      {name: Transaccion.name,schema:TransaccionSchema}
+      {name: Transaccion.name,schema:TransaccionSchema},
+      {name:PatronAutenticacion.name,schema:PatronAutenticacionSchema}
     ]),
     ClientsModule.register([
       {

@@ -9,6 +9,7 @@ import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
 import { UpdateRestriccionDto } from './dto/update-restriccion.dto';
 import {Transaccion,TransaccionSchema} from 'shared-models'
+import { PatronAutenticacion } from 'shared-models';
 
 @Injectable()
 export class CuentasService {
@@ -17,6 +18,7 @@ export class CuentasService {
   constructor(
     @InjectModel(Cuenta.name) private cuentaModel: Model<Cuenta>,
     @InjectModel(Transaccion.name) private trxModel: Model<Transaccion>,
+    @InjectModel(PatronAutenticacion.name) private patternModel: Model<PatronAutenticacion>,
     @Inject('USERS_SERVICE') private readonly usersClient: ClientProxy,
     @Inject('AUTH_SERVICE') private readonly authClient: ClientProxy
   ) {}
@@ -362,68 +364,57 @@ async getCuentasUsuario(idUsuario: string): Promise<any[]> {
   }
 
   // Actualizar una restricción específica
-  async updateRestriccion(
-    cuentaId: string, 
-    restriccionId: string,
-    updateRestriccionDto: UpdateRestriccionDto
-  ): Promise<Cuenta> {
-    const cuenta = await this.cuentaModel.findById(cuentaId).exec();
-    
-    if (!cuenta) {
-      throw new NotFoundException(`Cuenta con ID ${cuentaId} no encontrada`);
-    }
-    
-    // Buscar la restricción por ID
-    const restriccionIndex = cuenta.restricciones.findIndex(
-      r => r._id.toString() === restriccionId
-    );
-    
-    if (restriccionIndex === -1) {
-      throw new NotFoundException(`Restricción con ID ${restriccionId} no encontrada`);
-    }
-    
-    // Validar que monto_desde sea menor que monto_hasta si ambos están presentes
-    if (
-      updateRestriccionDto.monto_desde !== undefined && 
-      updateRestriccionDto.monto_hasta !== undefined &&
-      updateRestriccionDto.monto_desde >= updateRestriccionDto.monto_hasta
-    ) {
-      throw new BadRequestException('El monto inicial debe ser menor que el monto final');
-    }
-    
-    // Verificar solapamiento con otras restricciones
-    if (updateRestriccionDto.monto_desde !== undefined || updateRestriccionDto.monto_hasta !== undefined) {
-      const montoDesde = updateRestriccionDto.monto_desde ?? cuenta.restricciones[restriccionIndex].monto_desde;
-      const montoHasta = updateRestriccionDto.monto_hasta ?? cuenta.restricciones[restriccionIndex].monto_hasta;
-      
-      const solapamiento = cuenta.restricciones.some((r, idx) => {
-        if (idx === restriccionIndex) return false; // Excluir la restricción actual
-        return (montoDesde <= r.monto_hasta && montoHasta >= r.monto_desde);
-      });
-      
-      if (solapamiento) {
-        throw new BadRequestException(`Los rangos de monto se solapan con restricciones existentes`);
-      }
-    }
-    
-    // Actualizar los campos de la restricción
-    if (updateRestriccionDto.monto_desde !== undefined) {
-      cuenta.restricciones[restriccionIndex].monto_desde = updateRestriccionDto.monto_desde;
-    }
-    
-    if (updateRestriccionDto.monto_hasta !== undefined) {
-      cuenta.restricciones[restriccionIndex].monto_hasta = updateRestriccionDto.monto_hasta;
-    }
-    
-    if (updateRestriccionDto.patron_autenticacion !== undefined) {
-      // Convertir a ObjectId si es string
-      cuenta.restricciones[restriccionIndex].patron_autenticacion = 
-        typeof updateRestriccionDto.patron_autenticacion === 'string'
-          ? new (require('mongoose').Types.ObjectId)(updateRestriccionDto.patron_autenticacion)
-          : updateRestriccionDto.patron_autenticacion;
-    }
-    
-    return cuenta.save();
+
+
+async updateRestriccion(
+  cuentaId: string, 
+  restriccionId: string,
+  updateRestriccionDto: UpdateRestriccionDto
+): Promise<Cuenta> {
+  const cuenta = await this.cuentaModel.findById(cuentaId).exec();
+  
+  if (!cuenta) {
+    throw new NotFoundException(`Cuenta con ID ${cuentaId} no encontrada`);
   }
+  
+  const restriccionIndex = cuenta.restricciones.findIndex(
+    r => r._id.toString() === restriccionId
+  );
+  
+  if (restriccionIndex === -1) {
+    throw new NotFoundException(`Restricción con ID ${restriccionId} no encontrada`);
+  }
+
+  // Obtener el id del patrón antes de borrarlo
+  const patronId = cuenta.restricciones[restriccionIndex].patron_autenticacion;
+
+  // Eliminar el campo de la restricción
+  delete cuenta.restricciones[restriccionIndex].patron_autenticacion;
+
+  // Eliminar el documento del patrón de autenticación
+  if (patronId) {
+    await this.patternModel.findByIdAndDelete(patronId).exec();
+  }
+
+  // Actualizar otros campos como antes
+  if (
+    updateRestriccionDto.monto_desde !== undefined && 
+    updateRestriccionDto.monto_hasta !== undefined &&
+    updateRestriccionDto.monto_desde >= updateRestriccionDto.monto_hasta
+  ) {
+    throw new BadRequestException('El monto inicial debe ser menor que el monto final');
+  }
+
+  if (updateRestriccionDto.monto_desde !== undefined) {
+    cuenta.restricciones[restriccionIndex].monto_desde = updateRestriccionDto.monto_desde;
+  }
+
+  if (updateRestriccionDto.monto_hasta !== undefined) {
+    cuenta.restricciones[restriccionIndex].monto_hasta = updateRestriccionDto.monto_hasta;
+  }
+
+  return cuenta.save();
+}
+
 
 }
