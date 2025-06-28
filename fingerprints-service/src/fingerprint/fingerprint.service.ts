@@ -5,6 +5,7 @@ import { DedoRegistrado, Dedos } from 'shared-models';
 import { DedoPatron } from 'shared-models';
 import { CreateFingerpatternDto } from 'shared-models';
 import { CuentaApp } from 'shared-models';
+import { Cuenta } from 'shared-models';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -15,7 +16,8 @@ export class FingerprintService {
   constructor(
     @InjectModel(DedoRegistrado.name) private dedoRegistradoModel: Model<DedoRegistrado>,
     @InjectModel(DedoPatron.name) private dedoPatronModel: Model<DedoPatron>,
-    @InjectModel(CuentaApp.name) private cuentaAppModel: Model<CuentaApp>
+    @InjectModel(CuentaApp.name) private cuentaAppModel: Model<CuentaApp>,
+    @InjectModel(Cuenta.name) private cuentaModel: Model<Cuenta>
   ) { }
 
   /**
@@ -196,45 +198,47 @@ export class FingerprintService {
     };
   }
   async getAccountIdByFingerprint(sensorId: string) {
-  try {
-    // Obtener todos los dedos registrados
-    const allFingerprints = await this.dedoRegistradoModel.find({});
-    
-    // Buscar coincidencia
-    for (const fingerprint of allFingerprints) {
-      if (this.verifySensorId(sensorId, fingerprint.huella)) {
-        
-        // Encontrar el patrón asociado
-        const patternEntry = await this.dedoPatronModel
-          .findOne({ dedos_registrados: fingerprint._id });
+    try {
+      // Obtener todos los dedos registrados
+      const allFingerprints = await this.dedoRegistradoModel.find({});
 
-        if (!patternEntry) continue;
+      // Buscar coincidencia
+      for (const fingerprint of allFingerprints) {
+        if (this.verifySensorId(sensorId, fingerprint.huella)) {
 
-        // Obtener la cuenta
-        const account = await this.cuentaAppModel
-          .findById(patternEntry.id_cuenta_app);
+          // Encontrar el patrón asociado
+          const patternEntry = await this.dedoPatronModel
+            .findOne({ dedos_registrados: fingerprint._id });
 
-        if (!account) continue;
+          if (!patternEntry) continue;
 
-        return {
-          found: true,
-          accountId: account._id.toString(),
-          personaId: account.persona.toString(),
-          fingerInfo: {
-            dedo: fingerprint.dedo,
-            orden: patternEntry.orden
-          }
-        };
+          // Obtener la cuenta
+          const account = await this.cuentaAppModel
+            .findById(patternEntry.id_cuenta_app);
+
+          if (!account) continue;
+
+          const cuentasTransaccionales = await this.cuentaModel
+            .find({titular: account.persona});
+
+          const cuentas = cuentasTransaccionales.map(cuenta => ({
+            id: cuenta._id.toString(),
+            numero_cuenta: cuenta.numero_cuenta}))
+
+          return {
+            found: true,
+            cuentasDeUsuario:cuentas,
+          };
+        }
       }
+
+      return {
+        found: false,
+        message: 'Huella no encontrada'
+      };
+
+    } catch (error) {
+      throw new BadRequestException(`Error: ${error.message}`);
     }
-
-    return {
-      found: false,
-      message: 'Huella no encontrada'
-    };
-
-  } catch (error) {
-    throw new BadRequestException(`Error: ${error.message}`);
   }
-}
 }

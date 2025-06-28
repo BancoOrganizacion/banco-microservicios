@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { CuentaApp, CuentaAppSchema, DedoRegistrado, DedosRegistrados } from 'shared-models';
+import { CuentaApp, CuentaAppSchema, DedoRegistrado, DedosRegistrados,Cuenta,CuentaSchema } from 'shared-models';
 import { FingerprintService } from './fingerprint.service';
 import { FingerprintController } from './fingerprint.controller';
 import { DedoPatron, DedoPatronSchema } from 'shared-models';
@@ -18,7 +18,11 @@ import { JwtDataGuard } from './guards/jwt-data.guard';
         },
         {
             name: CuentaApp.name,
-            schema:CuentaAppSchema
+            schema: CuentaAppSchema
+        },
+        {
+            name: Cuenta.name,
+            schema: CuentaSchema
         },])
     ],
     providers: [FingerprintService,
