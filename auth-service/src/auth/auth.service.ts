@@ -28,6 +28,12 @@ export class AuthService {
       throw new UnauthorizedException('Credenciales inválidas');
     }
 
+    // verificar que el usuario ya este registrado en telegram
+    if (cuenta.persona.estado_verificacion_telegram !== 1) {
+    this.logger.warn(`Usuario ${username} no ha verificado su Telegram`);
+    throw new UnauthorizedException('Debe verificar su número de teléfono con Telegram antes de iniciar sesión');
+    }
+
     // Verificar la contraseña
     const isPasswordValid = await bcrypt.compare(password, cuenta.contraseña);
 

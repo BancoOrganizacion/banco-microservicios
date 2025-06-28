@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, Logger, Inject } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model,ObjectId, SchemaTypes, Types } from 'mongoose';
+import { Model, Types, Schema } from 'mongoose';
 import { Cuenta, EstadoCuenta, Restriccion } from 'shared-models';
 import { CreateCuentaDto } from 'shared-models';
 import { CreateRestriccionDto } from 'shared-models';
@@ -8,7 +8,7 @@ import { UpdateCuentaDto } from 'shared-models';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
 import { UpdateRestriccionDto } from './dto/update-restriccion.dto';
-import {Transaccion,TransaccionSchema} from 'shared-models'
+import { Transaccion, TransaccionSchema } from 'shared-models'
 import { PatronAutenticacion } from 'shared-models';
 
 @Injectable()
@@ -196,10 +196,10 @@ export class CuentasService {
     }
     
     // Verificar solapamiento con otras restricciones (sin permitir valores límite compartidos)
-    const solapamiento = cuenta.restricciones.some(r => 
-    restriccion.monto_desde <= r.monto_hasta && restriccion.monto_hasta >= r.monto_desde
-  );
-    
+    const solapamiento = cuenta.restricciones.some(r =>
+      restriccion.monto_desde <= r.monto_hasta && restriccion.monto_hasta >= r.monto_desde
+    );
+
     if (solapamiento) {
       throw new BadRequestException('Los rangos de monto se solapan con restricciones existentes');
     }
@@ -256,53 +256,53 @@ export class CuentasService {
    * Este método se comunicará con el microservicio de movimientos cuando esté disponible
    */
   async getMovimientos(idUsuario: string, idCuenta: string): Promise<any[]> {
-  // Si idCuenta viene como 'id1,id2', tomar solo el primero y validar
-  const cuentaIdLimpio = (idCuenta || '').split(',')[0].trim();
-  if (!Types.ObjectId.isValid(cuentaIdLimpio)) {
-    throw new BadRequestException(`El parámetro idCuenta no es un ObjectId válido: ${cuentaIdLimpio}`);
-  }
-  
-  const cuenta = await this.cuentaModel.findOne({ _id: cuentaIdLimpio }).exec();
-  if (!cuenta) {
-    throw new NotFoundException(`No se encontró la cuenta con ID ${cuentaIdLimpio}`);
-  }
-  
-  // Buscar transacciones donde esta cuenta específica aparezca como origen o destino y estado válido
-  const query = {
-    $or: [
-      { cuenta_origen: cuenta._id },
-      { cuenta_destino: cuenta._id }
-    ],
-    estado: { $in: ['AUTORIZADA', 'COMPLETADA'] }
-  };
-  
-  const transacciones = await this.trxModel.find(query).exec();
-  
-  // Mapear las transacciones para devolver solo los datos relevantes - SIN COMISIÓN
-  return transacciones.map(transaccion => ({
-    numero_transaccion: transaccion.numero_transaccion,
-    monto_total: transaccion.monto, // Solo el monto, sin comisión
-    descripcion: transaccion.descripcion,
-    tipo: transaccion.cuenta_origen.toString() === cuenta._id.toString() ? 'SALIDA' : 'ENTRADA',
-    cuenta_origen: transaccion.cuenta_origen,
-    cuenta_destino: transaccion.cuenta_destino,
-    fecha: transaccion.createdAt,
-    titular_cuenta: cuenta.titular,
+    // Si idCuenta viene como 'id1,id2', tomar solo el primero y validar
+    const cuentaIdLimpio = (idCuenta || '').split(',')[0].trim();
+    if (!Types.ObjectId.isValid(cuentaIdLimpio)) {
+      throw new BadRequestException(`El parámetro idCuenta no es un ObjectId válido: ${cuentaIdLimpio}`);
+    }
+
+    const cuenta = await this.cuentaModel.findOne({ _id: cuentaIdLimpio }).exec();
+    if (!cuenta) {
+      throw new NotFoundException(`No se encontró la cuenta con ID ${cuentaIdLimpio}`);
+    }
+
+    // Buscar transacciones donde esta cuenta específica aparezca como origen o destino y estado válido
+    const query = {
+      $or: [
+        { cuenta_origen: cuenta._id },
+        { cuenta_destino: cuenta._id }
+      ],
+      estado: { $in: ['AUTORIZADA', 'COMPLETADA'] }
+    };
+
+    const transacciones = await this.trxModel.find(query).exec();
+
+    // Mapear las transacciones para devolver solo los datos relevantes - SIN COMISIÓN
+    return transacciones.map(transaccion => ({
+      numero_transaccion: transaccion.numero_transaccion,
+      monto_total: transaccion.monto, // Solo el monto, sin comisión
+      descripcion: transaccion.descripcion,
+      tipo: transaccion.cuenta_origen.toString() === cuenta._id.toString() ? 'SALIDA' : 'ENTRADA',
+      cuenta_origen: transaccion.cuenta_origen,
+      cuenta_destino: transaccion.cuenta_destino,
+      fecha: transaccion.createdAt,
+      titular_cuenta: cuenta.titular,
     }));
   }
 
-// OPCIONAL: Método para obtener todas las cuentas del usuario (útil para el frontend)
-async getCuentasUsuario(idUsuario: string): Promise<any[]> {
-  const cuentas = await this.cuentaModel.find({ titular: idUsuario }).exec();
-  
-  return cuentas.map(cuenta => ({
-    id: cuenta._id,
-    numero_cuenta: cuenta.numero_cuenta,
-    tipo_cuenta: cuenta.tipo_cuenta,
-    saldo: cuenta.monto_actual,
-    estado: cuenta.estado
-  }));
-}
+  // OPCIONAL: Método para obtener todas las cuentas del usuario (útil para el frontend)
+  async getCuentasUsuario(idUsuario: string): Promise<any[]> {
+    const cuentas = await this.cuentaModel.find({ titular: idUsuario }).exec();
+
+    return cuentas.map(cuenta => ({
+      id: cuenta._id,
+      numero_cuenta: cuenta.numero_cuenta,
+      tipo_cuenta: cuenta.tipo_cuenta,
+      saldo: cuenta.monto_actual,
+      estado: cuenta.estado
+    }));
+  }
 
   /**
    * Actualiza el saldo de una cuenta (método interno)
@@ -324,10 +324,10 @@ async getCuentasUsuario(idUsuario: string): Promise<any[]> {
   /**
    * Método para webhook de movimientos
    */
-  async procesarMovimiento(data: { 
-    cuentaId: string, 
-    monto: number, 
-    movimientoId: ObjectId 
+  async procesarMovimiento(data: {
+    cuentaId: string,
+    monto: number,
+    movimientoId: Schema.Types.ObjectId
   }): Promise<void> {
     try {
       const cuenta = await this.cuentaModel.findById(data.cuentaId).exec();
@@ -364,104 +364,139 @@ async getCuentasUsuario(idUsuario: string): Promise<any[]> {
   }
 
   //Eliminar patrón
-async eliminarPatronAutenticacion(patronId: string): Promise<void> {
-  // Validar ID
-  if (!Types.ObjectId.isValid(patronId)) {
-    throw new BadRequestException('El ID del patrón no es válido');
-  }
+  async eliminarPatronAutenticacion(patronId: string): Promise<void> {
+    // Validar ID
+    if (!Types.ObjectId.isValid(patronId)) {
+      throw new BadRequestException('El ID del patrón no es válido');
+    }
 
-  const patronObjectId = new Types.ObjectId(patronId);
+    const patronObjectId = new Types.ObjectId(patronId);
 
-  // Paso 1: Eliminar el patrón de la colección
-  const resultado = await this.patternModel.deleteOne({ _id: patronObjectId }).exec();
-  if (resultado.deletedCount === 0) {
-    throw new NotFoundException(`No se encontró ningún patrón con ID ${patronId}`);
-  }
+    // Paso 1: Eliminar el patrón de la colección
+    const resultado = await this.patternModel.deleteOne({ _id: patronObjectId }).exec();
+    if (resultado.deletedCount === 0) {
+      throw new NotFoundException(`No se encontró ningún patrón con ID ${patronId}`);
+    }
 
-  // Paso 2: Buscar todas las cuentas que contienen ese patrón en alguna restricción
-  const cuentasConPatron = await this.cuentaModel.find({
-    'restricciones.patron_autenticacion': patronObjectId
-  }).exec();
+    // Paso 2: Buscar todas las cuentas que contienen ese patrón en alguna restricción
+    const cuentasConPatron = await this.cuentaModel.find({
+      'restricciones.patron_autenticacion': patronObjectId
+    }).exec();
 
-  // Paso 3: Eliminar la referencia al patrón en cada cuenta
-  for (const cuenta of cuentasConPatron) {
-    let actualizado = false;
+    // Paso 3: Eliminar la referencia al patrón en cada cuenta
+    for (const cuenta of cuentasConPatron) {
+      let actualizado = false;
 
-    for (const restriccion of cuenta.restricciones) {
-      if (restriccion.patron_autenticacion?.toString() === patronId) {
-        delete restriccion.patron_autenticacion;
-        actualizado = true;
+      for (const restriccion of cuenta.restricciones) {
+        if (restriccion.patron_autenticacion?.toString() === patronId) {
+          delete restriccion.patron_autenticacion;
+          actualizado = true;
+        }
+      }
+
+      if (actualizado) {
+        await cuenta.save();
       }
     }
 
-    if (actualizado) {
-      await cuenta.save();
-    }
+    this.logger.log(`Patrón ${patronId} eliminado y referencias limpiadas`);
   }
-
-  this.logger.log(`Patrón ${patronId} eliminado y referencias limpiadas`);
-}
 
   // Actualizar una restricción específica
 
-async updateRestriccion(
-  cuentaId: string, 
-  restriccionId: string,
-  updateRestriccionDto: UpdateRestriccionDto
-): Promise<Cuenta> {
-  const cuenta = await this.cuentaModel.findById(cuentaId).exec();
+  async updateRestriccion(
+    cuentaId: string,
+    restriccionId: string,
+    updateRestriccionDto: UpdateRestriccionDto
+  ): Promise<Cuenta> {
+    const cuenta = await this.cuentaModel.findById(cuentaId).exec();
 
-  if (!cuenta) {
-    throw new NotFoundException(`Cuenta con ID ${cuentaId} no encontrada`);
-  }
-
-  const restriccionIndex = cuenta.restricciones.findIndex(
-    r => r._id.toString() === restriccionId
-  );
-
-  if (restriccionIndex === -1) {
-    throw new NotFoundException(`Restricción con ID ${restriccionId} no encontrada`);
-  }
-
-  // ✅ MANEJO DEL PATRÓN: Solo actuar si se envía un nuevo patrón
-  if (updateRestriccionDto.patron_autenticacion !== undefined) {
-    const patronAnterior = cuenta.restricciones[restriccionIndex].patron_autenticacion;
-
-    // ✅ ELIMINAR PATRÓN ANTERIOR si está marcado para eliminación por seguridad
-    if (updateRestriccionDto.debe_eliminar_patron_anterior === true && patronAnterior) {
-      await this.patternModel.deleteOne({ _id: patronAnterior }).exec();
-      this.logger.log(`Patrón anterior ${patronAnterior} eliminado por seguridad`);
+    if (!cuenta) {
+      throw new NotFoundException(`Cuenta con ID ${cuentaId} no encontrada`);
     }
 
-    // ✅ ASIGNAR NUEVO PATRÓN (puede ser null para eliminar sin reemplazar)
-    if (updateRestriccionDto.patron_autenticacion === null) {
-      // Eliminar referencia al patrón
-      delete cuenta.restricciones[restriccionIndex].patron_autenticacion;
-    } else {
-      // Asignar nuevo patrón
-      cuenta.restricciones[restriccionIndex].patron_autenticacion = new SchemaTypes.ObjectId(updateRestriccionDto.patron_autenticacion);
+    const restriccionIndex = cuenta.restricciones.findIndex(
+      r => r._id.toString() === restriccionId
+    );
+
+    if (restriccionIndex === -1) {
+      throw new NotFoundException(`Restricción con ID ${restriccionId} no encontrada`);
     }
-  }
 
-  // ✅ VALIDAR Y ACTUALIZAR MONTOS (tu lógica original)
-  if (
-    updateRestriccionDto.monto_desde !== undefined && 
-    updateRestriccionDto.monto_hasta !== undefined &&
-    updateRestriccionDto.monto_desde >= updateRestriccionDto.monto_hasta
-  ) {
-    throw new BadRequestException('El monto inicial debe ser menor que el monto final');
-  }
+    // Obtener los valores actuales para validación
+    const restriccionActual = cuenta.restricciones[restriccionIndex];
+    const montoDesdeNuevo = updateRestriccionDto.monto_desde !== undefined
+      ? updateRestriccionDto.monto_desde
+      : restriccionActual.monto_desde;
+    const montoHastaNuevo = updateRestriccionDto.monto_hasta !== undefined
+      ? updateRestriccionDto.monto_hasta
+      : restriccionActual.monto_hasta;
 
-  if (updateRestriccionDto.monto_desde !== undefined) {
-    cuenta.restricciones[restriccionIndex].monto_desde = updateRestriccionDto.monto_desde;
-  }
+    // ✅ VALIDAR RANGOS DE MONTOS
+    if (montoDesdeNuevo >= montoHastaNuevo) {
+      throw new BadRequestException('El monto inicial debe ser menor que el monto final');
+    }
 
-  if (updateRestriccionDto.monto_hasta !== undefined) {
-    cuenta.restricciones[restriccionIndex].monto_hasta = updateRestriccionDto.monto_hasta;
-  }
+    // ✅ VALIDAR SOLAPAMIENTO CON OTRAS RESTRICCIONES (excluyendo la actual)
+    const otrasRestricciones = cuenta.restricciones.filter((_, index) => index !== restriccionIndex);
+    const solapamiento = otrasRestricciones.some(r =>
+      montoDesdeNuevo <= r.monto_hasta && montoHastaNuevo >= r.monto_desde
+    );
 
-  return cuenta.save();
-}
+    if (solapamiento) {
+      throw new BadRequestException('Los rangos de monto se solapan con restricciones existentes');
+    }
+
+    // ✅ MANEJO DEL PATRÓN: Solo actuar si se envía un nuevo patrón
+    if (updateRestriccionDto.patron_autenticacion !== undefined) {
+      const patronAnterior = cuenta.restricciones[restriccionIndex].patron_autenticacion;
+
+      // ✅ VALIDACIÓN: Si se envía un patrón, verificar que sea válido (si no es null)
+      if (updateRestriccionDto.patron_autenticacion !== null) {
+        const patronId = updateRestriccionDto.patron_autenticacion;
+        if (!Types.ObjectId.isValid(patronId)) {
+          throw new BadRequestException(`ID de patrón inválido: ${patronId}`);
+        }
+
+        // Verificar que el patrón exista
+        const patronExiste = await this.patternModel.findById(patronId).exec();
+        if (!patronExiste) {
+          throw new NotFoundException(`Patrón con ID ${patronId} no encontrado`);
+        }
+      }
+
+      // ✅ ELIMINAR PATRÓN ANTERIOR si está marcado para eliminación por seguridad
+      if (updateRestriccionDto.debe_eliminar_patron_anterior === true && patronAnterior) {
+        await this.patternModel.deleteOne({ _id: patronAnterior }).exec();
+        this.logger.log(`Patrón anterior ${patronAnterior} eliminado por seguridad`);
+      }
+      // ✅ ASIGNAR NUEVO PATRÓN (puede ser null para eliminar sin reemplazar)
+      if (updateRestriccionDto.patron_autenticacion === null) {
+        // Eliminar referencia al patrón
+        cuenta.restricciones[restriccionIndex].patron_autenticacion = undefined;
+      } else {
+        // Asignar nuevo patrón (CORREGIDO: usar string y dejar que Mongoose lo convierta)
+        cuenta.restricciones[restriccionIndex].patron_autenticacion = updateRestriccionDto.patron_autenticacion as any;
+      }
+    }
+    // ✅ ACTUALIZAR MONTOS
+    if (updateRestriccionDto.monto_desde !== undefined) {
+      this.logger.log(`Actualizando monto_desde de ${cuenta.restricciones[restriccionIndex].monto_desde} a ${updateRestriccionDto.monto_desde}`);
+      cuenta.restricciones[restriccionIndex].monto_desde = updateRestriccionDto.monto_desde;
+    }
+
+    if (updateRestriccionDto.monto_hasta !== undefined) {
+      this.logger.log(`Actualizando monto_hasta de ${cuenta.restricciones[restriccionIndex].monto_hasta} a ${updateRestriccionDto.monto_hasta}`);
+      cuenta.restricciones[restriccionIndex].monto_hasta = updateRestriccionDto.monto_hasta;
+    }
+
+    // ✅ MARCAR COMO MODIFICADO una sola vez al final
+    cuenta.markModified('restricciones');
+
+    this.logger.log(`Restricción ${restriccionId} actualizada en cuenta ${cuentaId}`);
+    this.logger.log(`Restricción después de modificar:`, JSON.stringify(cuenta.restricciones[restriccionIndex], null, 2));
+    return cuenta.save();
+  }
 
 
 
