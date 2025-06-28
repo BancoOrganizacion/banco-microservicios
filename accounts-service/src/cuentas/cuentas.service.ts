@@ -363,6 +363,45 @@ async getCuentasUsuario(idUsuario: string): Promise<any[]> {
     return cuenta.restricciones;
   }
 
+  //Eliminar patrón
+async eliminarPatronAutenticacion(patronId: string): Promise<void> {
+  // Validar ID
+  if (!Types.ObjectId.isValid(patronId)) {
+    throw new BadRequestException('El ID del patrón no es válido');
+  }
+
+  const patronObjectId = new Types.ObjectId(patronId);
+
+  // Paso 1: Eliminar el patrón de la colección
+  const resultado = await this.patternModel.deleteOne({ _id: patronObjectId }).exec();
+  if (resultado.deletedCount === 0) {
+    throw new NotFoundException(`No se encontró ningún patrón con ID ${patronId}`);
+  }
+
+  // Paso 2: Buscar todas las cuentas que contienen ese patrón en alguna restricción
+  const cuentasConPatron = await this.cuentaModel.find({
+    'restricciones.patron_autenticacion': patronObjectId
+  }).exec();
+
+  // Paso 3: Eliminar la referencia al patrón en cada cuenta
+  for (const cuenta of cuentasConPatron) {
+    let actualizado = false;
+
+    for (const restriccion of cuenta.restricciones) {
+      if (restriccion.patron_autenticacion?.toString() === patronId) {
+        delete restriccion.patron_autenticacion;
+        actualizado = true;
+      }
+    }
+
+    if (actualizado) {
+      await cuenta.save();
+    }
+  }
+
+  this.logger.log(`Patrón ${patronId} eliminado y referencias limpiadas`);
+}
+
   // Actualizar una restricción específica
 
 async updateRestriccion(
@@ -384,26 +423,27 @@ async updateRestriccion(
     throw new NotFoundException(`Restricción con ID ${restriccionId} no encontrada`);
   }
 
-  // ✅ Solo actuar si se envía un nuevo patrón (no undefined y no null)
-  if (
-    updateRestriccionDto.patron_autenticacion !== undefined &&
-    updateRestriccionDto.patron_autenticacion !== null
-  ) {
+  // ✅ MANEJO DEL PATRÓN: Solo actuar si se envía un nuevo patrón
+  if (updateRestriccionDto.patron_autenticacion !== undefined) {
     const patronAnterior = cuenta.restricciones[restriccionIndex].patron_autenticacion;
 
-    // Eliminar patrón anterior si existe
-    if (patronAnterior) {
-      const patronAutenticacion = await this.patternModel.findById(patronAnterior).exec();
-      if (patronAutenticacion) {
-        await this.patternModel.deleteOne({ _id: patronAnterior }).exec();
-      }
+    // ✅ ELIMINAR PATRÓN ANTERIOR si está marcado para eliminación por seguridad
+    if (updateRestriccionDto.debe_eliminar_patron_anterior === true && patronAnterior) {
+      await this.patternModel.deleteOne({ _id: patronAnterior }).exec();
+      this.logger.log(`Patrón anterior ${patronAnterior} eliminado por seguridad`);
     }
 
-    // Asignar nuevo patrón
-    cuenta.restricciones[restriccionIndex].patron_autenticacion = new SchemaTypes.ObjectId(updateRestriccionDto.patron_autenticacion);
+    // ✅ ASIGNAR NUEVO PATRÓN (puede ser null para eliminar sin reemplazar)
+    if (updateRestriccionDto.patron_autenticacion === null) {
+      // Eliminar referencia al patrón
+      delete cuenta.restricciones[restriccionIndex].patron_autenticacion;
+    } else {
+      // Asignar nuevo patrón
+      cuenta.restricciones[restriccionIndex].patron_autenticacion = new SchemaTypes.ObjectId(updateRestriccionDto.patron_autenticacion);
+    }
   }
 
-  // Validar montos
+  // ✅ VALIDAR Y ACTUALIZAR MONTOS (tu lógica original)
   if (
     updateRestriccionDto.monto_desde !== undefined && 
     updateRestriccionDto.monto_hasta !== undefined &&
@@ -412,7 +452,6 @@ async updateRestriccion(
     throw new BadRequestException('El monto inicial debe ser menor que el monto final');
   }
 
-  // Actualizar montos si se envían
   if (updateRestriccionDto.monto_desde !== undefined) {
     cuenta.restricciones[restriccionIndex].monto_desde = updateRestriccionDto.monto_desde;
   }
@@ -423,6 +462,7 @@ async updateRestriccion(
 
   return cuenta.save();
 }
+
 
 
 }
