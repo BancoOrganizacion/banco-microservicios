@@ -1,4 +1,3 @@
-import { Injectable, Logger } from '@nestjs/common';
 import * as TelegramBot from 'node-telegram-bot-api';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
@@ -8,6 +7,7 @@ import { TelegramToken } from 'shared-models';
 import { ClientProxy } from '@nestjs/microservices'; 
 import * as crypto from 'crypto';
 import { firstValueFrom } from 'rxjs';
+import { Injectable, Logger, Inject } from '@nestjs/common';
 
 @Injectable()
 export class TelegramService {
@@ -288,6 +288,4 @@ export class TelegramService {
   }
 }
 
-function Inject(arg0: string): (target: typeof TelegramService, propertyKey: undefined, parameterIndex: 3) => void {
-  throw new Error('Function not implemented.');
-}
+
