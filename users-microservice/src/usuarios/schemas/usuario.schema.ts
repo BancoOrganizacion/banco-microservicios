@@ -19,7 +19,7 @@ export class Usuario extends Document {
   @Prop({ required: true, unique: true })
   email: string;
 
-  @Prop()
+  @Prop({ unique: true})
   telefono: string;
 
   @Prop({ 
@@ -31,6 +31,9 @@ export class Usuario extends Document {
 
   @Prop({ default: true })
   activo: boolean;
+
+  @Prop({ default: 0 }) // 0 = no verificado, 1 = verificado
+  estado_verificacion_telegram: number;
 }
 
 export const UsuarioSchema = SchemaFactory.createForClass(Usuario);

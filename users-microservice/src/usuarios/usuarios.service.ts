@@ -158,4 +158,19 @@ export class UsuariosService {
     return { message: 'Cuenta asociada correctamente' };
   }
   
+  async updateTelegramVerificationStatus(userId: string, status: number): Promise<Usuario> {
+    const usuario = await this.usuarioModel
+      .findByIdAndUpdate(
+        userId, 
+        { estado_verificacion_telegram: status },
+        { new: true }
+      )
+      .exec();
+      
+    if (!usuario) {
+      throw new NotFoundException(`Usuario con ID ${userId} no encontrado`);
+    }
+    
+    return usuario;
+  }
 }

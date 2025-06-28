@@ -5,7 +5,9 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { TelegramChat } from 'shared-models';
 import { TelegramToken } from 'shared-models';
+import { ClientProxy } from '@nestjs/microservices'; 
 import * as crypto from 'crypto';
+import { firstValueFrom } from 'rxjs';
 
 @Injectable()
 export class TelegramService {
@@ -15,7 +17,8 @@ export class TelegramService {
   constructor(
     private configService: ConfigService,
     @InjectModel(TelegramChat.name) private telegramChatModel: Model<TelegramChat>,
-    @InjectModel(TelegramToken.name) private telegramTokenModel: Model<TelegramToken>
+    @InjectModel(TelegramToken.name) private telegramTokenModel: Model<TelegramToken>,
+    @Inject('USERS_SERVICE') private readonly usersClient: ClientProxy // AGREGAR ESTA LÍNEA
   ) {
     const token = this.configService.get<string>('TELEGRAM_BOT_TOKEN');
     
@@ -58,6 +61,18 @@ export class TelegramService {
 
       // Vincular el chat de Telegram con el usuario
       await this.registerTelegramChatByUserId(tokenDoc.usuario.toString(), chatId);
+
+      // Actualizar el estado de verificación del usuario
+      try {
+        await firstValueFrom(
+          this.usersClient.send('users.updateTelegramStatus', {
+            userId: tokenDoc.usuario.toString(),
+            status: 1
+          })
+        );
+      } catch (error) {
+        this.logger.error(`Error al actualizar estado de verificación: ${error.message}`);
+      }
 
       // Marcar el token como usado
       tokenDoc.usado = true;
@@ -271,4 +286,8 @@ export class TelegramService {
     
     return this.sendVerificationCode(chatId, code);
   }
+}
+
+function Inject(arg0: string): (target: typeof TelegramService, propertyKey: undefined, parameterIndex: 3) => void {
+  throw new Error('Function not implemented.');
 }

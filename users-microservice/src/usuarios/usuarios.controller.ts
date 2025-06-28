@@ -250,4 +250,9 @@ export class UsuariosController {
   async addCuentaToUser(data: { userId: string, cuentaId: any }) {
     return this.usuariosService.addCuentaToUser(data.userId, data.cuentaId);
   }
+
+  @MessagePattern('users.updateTelegramStatus')
+  async updateTelegramStatus(data: { userId: string, status: number }) {
+    return this.usuariosService.updateTelegramVerificationStatus(data.userId, data.status);
+  }
 }
