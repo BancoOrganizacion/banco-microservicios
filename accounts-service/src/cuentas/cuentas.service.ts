@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, Logger, Inject } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, ObjectId, Types } from 'mongoose';
+import { Model,ObjectId, SchemaTypes, Types } from 'mongoose';
 import { Cuenta, EstadoCuenta, Restriccion } from 'shared-models';
 import { CreateCuentaDto } from 'shared-models';
 import { CreateRestriccionDto } from 'shared-models';
@@ -365,38 +365,45 @@ async getCuentasUsuario(idUsuario: string): Promise<any[]> {
 
   // Actualizar una restricción específica
 
-
 async updateRestriccion(
   cuentaId: string, 
   restriccionId: string,
   updateRestriccionDto: UpdateRestriccionDto
 ): Promise<Cuenta> {
   const cuenta = await this.cuentaModel.findById(cuentaId).exec();
-  
+
   if (!cuenta) {
     throw new NotFoundException(`Cuenta con ID ${cuentaId} no encontrada`);
   }
-  
+
   const restriccionIndex = cuenta.restricciones.findIndex(
     r => r._id.toString() === restriccionId
   );
-  
+
   if (restriccionIndex === -1) {
     throw new NotFoundException(`Restricción con ID ${restriccionId} no encontrada`);
   }
 
-  // Obtener el id del patrón antes de borrarlo
-  const patronId = cuenta.restricciones[restriccionIndex].patron_autenticacion;
+  // ✅ Solo actuar si se envía un nuevo patrón (no undefined y no null)
+  if (
+    updateRestriccionDto.patron_autenticacion !== undefined &&
+    updateRestriccionDto.patron_autenticacion !== null
+  ) {
+    const patronAnterior = cuenta.restricciones[restriccionIndex].patron_autenticacion;
 
-  // Eliminar el campo de la restricción
-  delete cuenta.restricciones[restriccionIndex].patron_autenticacion;
+    // Eliminar patrón anterior si existe
+    if (patronAnterior) {
+      const patronAutenticacion = await this.patternModel.findById(patronAnterior).exec();
+      if (patronAutenticacion) {
+        await this.patternModel.deleteOne({ _id: patronAnterior }).exec();
+      }
+    }
 
-  // Eliminar el documento del patrón de autenticación
-  if (patronId) {
-    await this.patternModel.findByIdAndDelete(patronId).exec();
+    // Asignar nuevo patrón
+    cuenta.restricciones[restriccionIndex].patron_autenticacion = new SchemaTypes.ObjectId(updateRestriccionDto.patron_autenticacion);
   }
 
-  // Actualizar otros campos como antes
+  // Validar montos
   if (
     updateRestriccionDto.monto_desde !== undefined && 
     updateRestriccionDto.monto_hasta !== undefined &&
@@ -405,6 +412,7 @@ async updateRestriccion(
     throw new BadRequestException('El monto inicial debe ser menor que el monto final');
   }
 
+  // Actualizar montos si se envían
   if (updateRestriccionDto.monto_desde !== undefined) {
     cuenta.restricciones[restriccionIndex].monto_desde = updateRestriccionDto.monto_desde;
   }
