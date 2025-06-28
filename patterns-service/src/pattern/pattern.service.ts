@@ -3,9 +3,11 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { CuentaApp, PatronAutenticacion } from 'shared-models';
 import { DedoPatron } from 'shared-models';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class PatternService {
+    readonly ENCRYPTION_KEY = process.env.FINGERPRINT_ENCRYPTION_KEY || 'your-32-character-secret-key-here!';
   constructor(
     @InjectModel(PatronAutenticacion.name)
     private readonly patronAutenticacionModel: Model<PatronAutenticacion>,
@@ -240,7 +242,7 @@ export class PatternService {
     }
   }
   //Validacion de patron de autenticacion
-  async validarCompraConPatron(body: {
+async validarCompraConPatron(body: {
   cuentaId: string;
   monto: string;
   sensorIds: string[];
@@ -259,16 +261,19 @@ export class PatternService {
     };
   }
 
-  // Extraer los sensorId reales del campo "huella"
-  const idsPatron = dedosPatron.map((dedoPatron) => {
-    const huellaCompleta = dedoPatron.dedos_registrados?.huella || "";
-    return huellaCompleta.split(":")[0]; // obtener sensorId antes de ":"
-  });
+  let coincidencias = 0;
 
-  // Comparar con los IDs enviados
-  const coincidencias = sensorIds.filter(id => idsPatron.includes(id));
+  for (const sensorId of sensorIds) {
+    for (const dedoPatron of dedosPatron) {
+      const storedHash = dedoPatron.dedos_registrados?.huella;
+      if (storedHash && this.verifySensorId(sensorId, storedHash)) {
+        coincidencias++;
+        break; // pasamos al siguiente sensorId
+      }
+    }
+  }
 
-  if (coincidencias.length >= 3) {
+  if (coincidencias >= 3) {
     return {
       valid: true,
       message: 'Patrón válido. Compra autorizada.'
@@ -276,8 +281,23 @@ export class PatternService {
   } else {
     return {
       valid: false,
-      message: 'No se reconoció un patrón válido. Huellas insuficientes o incorrectas.'
+      message: 'Huellas insuficientes o incorrectas.'
     };
+  }
+}
+
+private verifySensorId(sensorId: string, storedHash: string): boolean {
+  try {
+    const [salt, hash] = storedHash.split(':');
+    if (!salt || !hash) return false;
+
+    const expectedHash = crypto.createHash('sha256')
+      .update(sensorId + this.ENCRYPTION_KEY + salt)
+      .digest('hex');
+
+    return hash === expectedHash;
+  } catch (error) {
+    return false;
   }
 }
 
