@@ -358,4 +358,41 @@ export class PatternController {
   }> {
     return this.patternService.obtenerPatronBasico(patronId);
   }
+  @Post('validar-compra')
+@ApiOperation({ summary: 'Validar compra con patrón de huellas' })
+@ApiBody({
+  schema: {
+    type: 'object',
+    properties: {
+      cuentaId: { type: 'string', example: '665a1b...' },
+      monto: { type: 'string', example: '25.00' },
+      sensorIds: {
+        type: 'array',
+        items: { type: 'string', example: '41' }
+      }
+    },
+    required: ['cuentaId', 'monto', 'sensorIds']
+  }
+})
+@ApiResponse({
+  status: 200,
+  description: 'Resultado de la validación',
+  schema: {
+    type: 'object',
+    properties: {
+      valid: { type: 'boolean', example: true },
+      message: { type: 'string' }
+    }
+  }
+})
+async validarCompra(
+  @Body() body: {
+    cuentaId: string;
+    monto: string;
+    sensorIds: string[];
+  }
+) {
+  return this.patternService.validarCompraConPatron(body);
+}
+
 }

@@ -239,4 +239,46 @@ export class PatternService {
       throw new BadRequestException(`Error al obtener información del patrón: ${error.message}`);
     }
   }
+  //Validacion de patron de autenticacion
+  async validarCompraConPatron(body: {
+  cuentaId: string;
+  monto: string;
+  sensorIds: string[];
+}) {
+  const { cuentaId, sensorIds } = body;
+
+  // Obtener los dedos del patrón para esta cuenta
+  const dedosPatron = await this.dedoPatronModel
+    .find({ id_cuenta_app: cuentaId })
+    .populate('dedos_registrados');
+
+  if (!dedosPatron || dedosPatron.length === 0) {
+    return {
+      valid: false,
+      message: 'No existe un patrón registrado para esta cuenta.'
+    };
+  }
+
+  // Extraer los sensorId reales del campo "huella"
+  const idsPatron = dedosPatron.map((dedoPatron) => {
+    const huellaCompleta = dedoPatron.dedos_registrados?.huella || "";
+    return huellaCompleta.split(":")[0]; // obtener sensorId antes de ":"
+  });
+
+  // Comparar con los IDs enviados
+  const coincidencias = sensorIds.filter(id => idsPatron.includes(id));
+
+  if (coincidencias.length >= 3) {
+    return {
+      valid: true,
+      message: 'Patrón válido. Compra autorizada.'
+    };
+  } else {
+    return {
+      valid: false,
+      message: 'No se reconoció un patrón válido. Huellas insuficientes o incorrectas.'
+    };
+  }
+}
+
 }
