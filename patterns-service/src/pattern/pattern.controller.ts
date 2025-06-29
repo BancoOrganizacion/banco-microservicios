@@ -11,7 +11,8 @@ import {
   UsePipes,
   ValidationPipe,
   UseGuards,
-  Request
+  Request,
+  ForbiddenException
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -38,6 +39,8 @@ import {
   AutenticacionPatronResponse,
 } from 'shared-models';
 import { JwtDataGuard } from 'src/guards/jwt-data.guard';
+import { RoleGuard } from 'src/guards/role.guard';
+import { Roles } from 'src/decorators/roles.decorator';
 
 @ApiTags('patterns')
 @Controller('patterns')
@@ -359,40 +362,70 @@ export class PatternController {
     return this.patternService.obtenerPatronBasico(patronId);
   }
   @Post('validar-compra')
-  @ApiOperation({ summary: 'Validar compra con patrón de huellas' })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        cuentaId: { type: 'string', example: '665a1b...' },
-        monto: { type: 'string', example: '25.00' },
-        sensorIds: {
-          type: 'array',
-          items: { type: 'string', example: '41' }
-        }
-      },
-      required: ['cuentaId', 'monto', 'sensorIds']
+@UseGuards(JwtDataGuard, RoleGuard) // ✅ PROTECCIÓN CON JWT Y ROL
+@Roles('681144a24ea765b9fe824070') // ✅ SOLO ROL VINCULADOR
+@ApiOperation({ summary: 'Validar compra con patrón de huellas (solo rol vinculador)' })
+@ApiBearerAuth('JWT-auth') // ✅ DOCUMENTAR QUE REQUIERE JWT
+@ApiResponse({ 
+  status: 403, 
+  description: 'Acceso denegado - Solo el rol vinculador puede usar este endpoint',
+  schema: {
+    example: {
+      statusCode: 403,
+      message: 'No tienes permiso para acceder a este recurso',
+      error: 'Forbidden'
     }
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Resultado de la validación',
-    schema: {
-      type: 'object',
-      properties: {
-        valid: { type: 'boolean', example: true },
-        message: { type: 'string' }
+  }
+})
+@ApiResponse({ 
+  status: 401, 
+  description: 'No autorizado - Token JWT requerido',
+  schema: {
+    example: {
+      statusCode: 401,
+      message: 'No autorizado',
+      error: 'Unauthorized'
+    }
+  }
+})
+@ApiBody({
+  schema: {
+    type: 'object',
+    properties: {
+      cuentaId: { type: 'string', example: '665a1b...' },
+      monto: { type: 'string', example: '25.00' },
+      sensorIds: {
+        type: 'array',
+        items: { type: 'string', example: '41' }
       }
+    },
+    required: ['cuentaId', 'monto', 'sensorIds']
+  }
+})
+@ApiResponse({
+  status: 200,
+  description: 'Resultado de la validación',
+  schema: {
+    type: 'object',
+    properties: {
+      valid: { type: 'boolean', example: true },
+      message: { type: 'string' }
     }
-  })
-  async validarCompra(
-    @Body() body: {
-      cuentaId: string;
-      monto: string;
-      sensorIds: string[];
-    }
-  ) {
-    return this.patternService.validarCompraConPatron(body);
+  }
+})
+async validarCompra(
+  @Body() body: {
+    cuentaId: string;
+    monto: string;
+    sensorIds: string[];
+  },
+  @Request() req: any // Para acceder a información del usuario si es necesario
+) {
+  // Validación adicional del rol a nivel de método (doble seguridad)
+  if (req.user?.id_rol !== '681144a24ea765b9fe824070') {
+    throw new ForbiddenException('Solo el rol vinculador puede validar compras');
   }
 
+  return this.patternService.validarCompraConPatron(body);
+}
 }
