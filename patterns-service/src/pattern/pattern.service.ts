@@ -1,13 +1,13 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { CuentaApp, PatronAutenticacion,Cuenta } from 'shared-models';
+import { CuentaApp, PatronAutenticacion, Cuenta } from 'shared-models';
 import { DedoPatron } from 'shared-models';
 import * as crypto from 'crypto';
 
 @Injectable()
 export class PatternService {
-    readonly ENCRYPTION_KEY = process.env.FINGERPRINT_ENCRYPTION_KEY || 'your-32-character-secret-key-here!';
+  readonly ENCRYPTION_KEY = process.env.FINGERPRINT_ENCRYPTION_KEY || 'your-32-character-secret-key-here!';
   constructor(
     @InjectModel(PatronAutenticacion.name)
     private readonly patronAutenticacionModel: Model<PatronAutenticacion>,
@@ -15,52 +15,52 @@ export class PatternService {
     private readonly dedoPatronModel: Model<DedoPatron>,
     @InjectModel(CuentaApp.name) private cuentaAppModel: Model<CuentaApp>,
     @InjectModel(Cuenta.name) private cuentaModel: Model<Cuenta> // Asegúrate de que el modelo 'Cuenta' esté definido correctamente
-    
-  ) {}
+
+  ) { }
 
   /**
    * Crear un nuevo patrón de autenticación
    */
- async crearPatronAutenticacion(
-  idUsuario: string,
-  nombre: string,
-  dedosPatronIds: string[]
-): Promise<PatronAutenticacion> {
-  try {
-    // Validar mínimo de 3 dedos patrón
-    if (dedosPatronIds.length < 3) {
-      throw new BadRequestException('Debe proporcionar al menos 3 dedos patrón');
+  async crearPatronAutenticacion(
+    idUsuario: string,
+    nombre: string,
+    dedosPatronIds: string[]
+  ): Promise<PatronAutenticacion> {
+    try {
+      // Validar mínimo de 3 dedos patrón
+      if (dedosPatronIds.length < 3) {
+        throw new BadRequestException('Debe proporcionar al menos 3 dedos patrón');
+      }
+
+      // Validar existencia de usuario
+      const cuentaAppUsuario = await this.cuentaAppModel.findOne({ persona: idUsuario });
+      if (!cuentaAppUsuario) {
+        throw new BadRequestException('El usuario no existe');
+      }
+
+      // Validar existencia de todos los dedos patrón
+      const dedosExistentes = await this.dedoPatronModel
+        .find({ _id: { $in: dedosPatronIds } })
+        .exec();
+
+      if (dedosExistentes.length !== dedosPatronIds.length) {
+        throw new BadRequestException('Algunos dedos patrón no existen');
+      }
+
+      // Construir nuevo patrón de autenticación
+      const nuevoPatron = new this.patronAutenticacionModel({
+        id_patron_autenticacion: new Types.ObjectId(),
+        nombre: nombre.trim(),
+        fecha_creacion: new Date(),
+        activo: true,
+        dedos_patron: dedosPatronIds, // el orden se refleja en el índice del array
+      });
+
+      return await nuevoPatron.save();
+    } catch (error) {
+      throw new BadRequestException(`Error al crear patrón de autenticación: ${error.message}`);
     }
-
-    // Validar existencia de usuario
-    const cuentaAppUsuario = await this.cuentaAppModel.findOne({ persona: idUsuario });
-    if (!cuentaAppUsuario) {
-      throw new BadRequestException('El usuario no existe');
-    }
-
-    // Validar existencia de todos los dedos patrón
-    const dedosExistentes = await this.dedoPatronModel
-      .find({ _id: { $in: dedosPatronIds } })
-      .exec();
-
-    if (dedosExistentes.length !== dedosPatronIds.length) {
-      throw new BadRequestException('Algunos dedos patrón no existen');
-    }
-
-    // Construir nuevo patrón de autenticación
-    const nuevoPatron = new this.patronAutenticacionModel({
-      id_patron_autenticacion: new Types.ObjectId(),
-      nombre: nombre.trim(),
-      fecha_creacion: new Date(),
-      activo: true,
-      dedos_patron: dedosPatronIds, // el orden se refleja en el índice del array
-    });
-
-    return await nuevoPatron.save();
-  } catch (error) {
-    throw new BadRequestException(`Error al crear patrón de autenticación: ${error.message}`);
   }
-}
 
 
   /**
@@ -123,7 +123,7 @@ export class PatternService {
   async obtenerPatronesPorCuenta(idUsuario: string): Promise<PatronAutenticacion[]> {
     try {
       // Primero obtenemos los dedos patrón de la cuenta
-      const cuentaAppUsuario = await this.cuentaAppModel.findOne({persona:idUsuario});
+      const cuentaAppUsuario = await this.cuentaAppModel.findOne({ persona: idUsuario });
 
       const dedosPatron = await this.dedoPatronModel
         .find({ id_cuenta_app: cuentaAppUsuario._id })
@@ -194,7 +194,7 @@ export class PatternService {
   }> {
     try {
       const patron = await this.obtenerPatronPorId(patronId);
-      
+
       if (!patron.activo) {
         throw new BadRequestException('El patrón de autenticación está inactivo');
       }
@@ -243,6 +243,8 @@ export class PatternService {
     }
   }
   //Validacion de patron de autenticacion
+  // Método mejorado que maneja la conversión de cuenta transaccional a cuenta app// Método mejorado que maneja la conversión de cuenta transaccional a cuenta app
+// Método mejorado que maneja la conversión de cuenta transaccional a cuenta app
 async validarCompraConPatron(body: {
   cuentaId: string; // Este es el ID de la cuenta transaccional
   monto: string;
@@ -275,6 +277,9 @@ async validarCompraConPatron(body: {
   });
 
   // Buscar la cuenta app usando el titular
+  console.log('Buscando cuenta app con persona:', cuentaTransaccional.titular);
+  console.log('Tipo de titular:', typeof cuentaTransaccional.titular);
+  
   const cuentaApp = await this.cuentaAppModel.findOne({ 
     persona: cuentaTransaccional.titular 
   });
@@ -294,6 +299,9 @@ async validarCompraConPatron(body: {
 
   // PASO 2: Buscar patrones usando el ID de la cuenta app
   console.log('\n--- PASO 2: Buscando patrones ---');
+  console.log('Buscando patrones con id_cuenta_app:', cuentaApp._id);
+  console.log('Tipo de cuentaApp._id:', typeof cuentaApp._id);
+  
   const dedosPatron = await this.dedoPatronModel
     .find({ id_cuenta_app: cuentaApp._id })
     .populate('dedos_registrados')
@@ -301,12 +309,30 @@ async validarCompraConPatron(body: {
 
   console.log('Dedos patrón encontrados:', dedosPatron.length);
 
-  if (!dedosPatron || dedosPatron.length === 0) {
-    console.log('❌ No se encontraron patrones para esta cuenta app');
-    return {
-      valid: false,
-      message: 'No existe un patrón registrado para esta cuenta.'
-    };
+  // Si no encuentra patrones, intentar búsquedas alternativas
+  if (dedosPatron.length === 0) {
+    console.log('❌ No se encontraron patrones. Ejecutando debug...');
+    
+    // Verificar si existen patrones con conversión de ObjectId
+    const patronesAlternativos = await this.dedoPatronModel
+      .find({ id_cuenta_app: new Types.ObjectId(cuentaApp._id.toString()) })
+      .populate('dedos_registrados')
+      .exec();
+    
+    console.log('Patrones con ObjectId convertido:', patronesAlternativos.length);
+    
+    // Ejecutar debug completo
+    await this.debugPatterns(cuentaTransaccional.titular.toString());
+    
+    if (patronesAlternativos.length === 0) {
+      return {
+        valid: false,
+        message: 'No existe un patrón registrado para esta cuenta.'
+      };
+    }
+    
+    // Usar los patrones alternativos
+    dedosPatron.push(...patronesAlternativos);
   }
 
   // PASO 3: Mostrar información de los patrones
@@ -388,19 +414,92 @@ async validarCompraConPatron(body: {
     };
   }
 }
-private verifySensorId(sensorId: string, storedHash: string): boolean {
-  try {
-    const [salt, hash] = storedHash.split(':');
-    if (!salt || !hash) return false;
+  private verifySensorId(sensorId: string, storedHash: string): boolean {
+    try {
+      const [salt, hash] = storedHash.split(':');
+      if (!salt || !hash) return false;
 
-    const expectedHash = crypto.createHash('sha256')
-      .update(sensorId + this.ENCRYPTION_KEY + salt)
-      .digest('hex');
+      const expectedHash = crypto.createHash('sha256')
+        .update(sensorId + this.ENCRYPTION_KEY + salt)
+        .digest('hex');
 
-    return hash === expectedHash;
-  } catch (error) {
-    return false;
+      return hash === expectedHash;
+    } catch (error) {
+      return false;
+    }
   }
-}
+  // Método auxiliar para debuggear qué patrones existen en la base de datos
+  async debugPatterns(personaId?: string) {
+    console.log('=== DEBUG: VERIFICANDO TODOS LOS PATRONES ===');
 
+    // Obtener todos los patrones
+    const todosLosPatrones = await this.dedoPatronModel
+      .find({})
+      .populate('dedos_registrados')
+      .populate('id_cuenta_app')
+      .exec();
+
+    console.log('Total de patrones en la BD:', todosLosPatrones.length);
+
+    todosLosPatrones.forEach((patron, index) => {
+      console.log(`\nPatrón ${index + 1}:`);
+      console.log('  ID del patrón:', patron._id);
+      console.log('  id_cuenta_app:', patron.id_cuenta_app);
+      console.log('  Orden:', patron.orden);
+      console.log('  Dedo registrado:', {
+        id: patron.dedos_registrados?._id,
+        dedo: patron.dedos_registrados?.dedo,
+        huella: patron.dedos_registrados?.huella?.substring(0, 20) + '...'
+      });
+    });
+
+    if (personaId) {
+      console.log('\n--- FILTRADO POR PERSONA ---');
+      console.log('Buscando persona:', personaId);
+
+      // Buscar cuenta app de esta persona
+      const cuentaApp = await this.cuentaAppModel.findOne({ persona: personaId });
+      if (cuentaApp) {
+        console.log('Cuenta app encontrada:', cuentaApp._id);
+
+        const patronesDePersona = todosLosPatrones.filter(p =>
+          p.id_cuenta_app && p.id_cuenta_app.toString() === cuentaApp._id.toString()
+        );
+
+        console.log('Patrones de esta persona:', patronesDePersona.length);
+        patronesDePersona.forEach((patron, index) => {
+          console.log(`  Patrón ${index + 1}: ${patron.dedos_registrados?.dedo} - ${patron.orden}`);
+        });
+      } else {
+        console.log('❌ No se encontró cuenta app para esta persona');
+      }
+    }
+
+    return todosLosPatrones;
+  }
+
+  // También añadir este método para verificar todas las cuentas
+  async debugAccounts() {
+    console.log('\n=== DEBUG: VERIFICANDO CUENTAS ===');
+
+    const cuentasApp = await this.cuentaAppModel.find({});
+    console.log('Total cuentas app:', cuentasApp.length);
+
+    cuentasApp.forEach((cuenta, index) => {
+      console.log(`Cuenta app ${index + 1}:`);
+      console.log('  ID:', cuenta._id);
+      console.log('  Usuario:', cuenta.nombre_usuario);
+      console.log('  Persona:', cuenta.persona);
+    });
+
+    const cuentasTransaccionales = await this.cuentaModel.find({});
+    console.log('\nTotal cuentas transaccionales:', cuentasTransaccionales.length);
+
+    cuentasTransaccionales.forEach((cuenta, index) => {
+      console.log(`Cuenta transaccional ${index + 1}:`);
+      console.log('  ID:', cuenta._id);
+      console.log('  Número:', cuenta.numero_cuenta);
+      console.log('  Titular:', cuenta.titular);
+    });
+  }
 }
