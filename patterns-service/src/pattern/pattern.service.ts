@@ -246,174 +246,230 @@ export class PatternService {
   // Método mejorado que maneja la conversión de cuenta transaccional a cuenta app// Método mejorado que maneja la conversión de cuenta transaccional a cuenta app
 // Método mejorado que maneja la conversión de cuenta transaccional a cuenta app
 async validarCompraConPatron(body: {
-  cuentaId: string; // Este es el ID de la cuenta transaccional
+  cuentaId: string; // ID de cuenta transaccional
   monto: string;
   sensorIds: string[];
 }) {
   const { cuentaId, monto, sensorIds } = body;
 
-  console.log('=== DEBUGGING VALIDACION COMPRA ===');
-  console.log('CuentaId transaccional recibida:', cuentaId);
-  console.log('Monto:', monto);
-  console.log('SensorIds recibidos:', sensorIds);
+  // PRIMERO: Mostrar todos los hashes almacenados
+  await this.mostrarHashesAlmacenados(cuentaId);
 
-  // PASO 1: Convertir de cuenta transaccional a cuenta app
-  console.log('\n--- PASO 1: Obteniendo cuenta app ---');
-  
-  // Buscar la cuenta transaccional
+  console.log('\n=== VALIDACION DE COMPRA - HASH DEBUG ===');
+  console.log('CuentaId (transaccional):', cuentaId);
+  console.log('SensorIds recibidos:', sensorIds);
+  console.log('ENCRYPTION_KEY:', this.ENCRYPTION_KEY);
+
+  // Mostrar hashes almacenados primero
+  await this.mostrarHashesAlmacenados(cuentaId);
+
+  // Paso 1: Obtener titular de la cuenta transaccional
   const cuentaTransaccional = await this.cuentaModel.findById(cuentaId);
   if (!cuentaTransaccional) {
-    console.log('❌ Cuenta transaccional no encontrada');
-    return {
-      valid: false,
-      message: 'Cuenta transaccional no encontrada.'
-    };
+    return { valid: false, message: 'Cuenta no encontrada.' };
   }
 
-  console.log('Cuenta transaccional encontrada:', {
-    id: cuentaTransaccional._id,
-    numero_cuenta: cuentaTransaccional.numero_cuenta,
-    titular: cuentaTransaccional.titular
-  });
+  console.log('Titular de la cuenta:', cuentaTransaccional.titular);
 
-  // Buscar la cuenta app usando el titular
-  console.log('Buscando cuenta app con persona:', cuentaTransaccional.titular);
-  console.log('Tipo de titular:', typeof cuentaTransaccional.titular);
-  
+  // Paso 2: Obtener cuenta app del titular
   const cuentaApp = await this.cuentaAppModel.findOne({ 
     persona: cuentaTransaccional.titular 
   });
-  
   if (!cuentaApp) {
-    console.log('❌ Cuenta app no encontrada para el titular');
-    return {
-      valid: false,
-      message: 'No se encontró cuenta de aplicación para este titular.'
-    };
+    return { valid: false, message: 'Cuenta de aplicación no encontrada.' };
   }
 
-  console.log('Cuenta app encontrada:', {
-    id: cuentaApp._id,
-    persona: cuentaApp.persona
-  });
+  console.log('ID de cuenta app:', cuentaApp._id);
 
-  // PASO 2: Buscar patrones usando el ID de la cuenta app
-  console.log('\n--- PASO 2: Buscando patrones ---');
-  console.log('Buscando patrones con id_cuenta_app:', cuentaApp._id);
-  console.log('Tipo de cuentaApp._id:', typeof cuentaApp._id);
-  
+  // Paso 3: Obtener patrones
   const dedosPatron = await this.dedoPatronModel
     .find({ id_cuenta_app: cuentaApp._id })
     .populate('dedos_registrados')
     .exec();
 
-  console.log('Dedos patrón encontrados:', dedosPatron.length);
+  console.log('\n=== PATRONES ENCONTRADOS ===');
+  console.log('Total patrones:', dedosPatron.length);
 
-  // Si no encuentra patrones, intentar búsquedas alternativas
   if (dedosPatron.length === 0) {
-    console.log('❌ No se encontraron patrones. Ejecutando debug...');
-    
-    // Verificar si existen patrones con conversión de ObjectId
-    const patronesAlternativos = await this.dedoPatronModel
-      .find({ id_cuenta_app: new Types.ObjectId(cuentaApp._id.toString()) })
-      .populate('dedos_registrados')
-      .exec();
-    
-    console.log('Patrones con ObjectId convertido:', patronesAlternativos.length);
-    
-    // Ejecutar debug completo
-    await this.debugPatterns(cuentaTransaccional.titular.toString());
-    
-    if (patronesAlternativos.length === 0) {
-      return {
-        valid: false,
-        message: 'No existe un patrón registrado para esta cuenta.'
-      };
-    }
-    
-    // Usar los patrones alternativos
-    dedosPatron.push(...patronesAlternativos);
+    return { valid: false, message: 'No hay patrones registrados.' };
   }
 
-  // PASO 3: Mostrar información de los patrones
-  console.log('\n--- PASO 3: Información de patrones ---');
-  dedosPatron.forEach((dedo, index) => {
-    console.log(`Dedo patrón ${index + 1}:`);
-    console.log('  ID del patrón:', dedo._id);
-    console.log('  Orden:', dedo.orden);
-    console.log('  Tipo de dedo:', dedo.dedos_registrados?.dedo);
-    console.log('  Hash almacenado:', dedo.dedos_registrados?.huella);
+  // Mostrar todos los hashes almacenados
+  dedosPatron.forEach((patron, index) => {
+    console.log(`\nPatrón ${index + 1}:`);
+    console.log('  Dedo:', patron.dedos_registrados?.dedo);
+    console.log('  Hash completo:', patron.dedos_registrados?.huella);
     
-    // Verificar formato del hash
-    if (dedo.dedos_registrados?.huella) {
-      const parts = dedo.dedos_registrados.huella.split(':');
-      console.log('  Formato hash:', parts.length === 2 ? '✅ Correcto (salt:hash)' : '❌ Incorrecto');
+    if (patron.dedos_registrados?.huella) {
+      const [salt, hash] = patron.dedos_registrados.huella.split(':');
+      console.log('  Salt:', salt);
+      console.log('  Hash:', hash);
+      console.log('  Formato válido:', !!(salt && hash));
     }
   });
 
-  // PASO 4: Verificar coincidencias
-  console.log('\n--- PASO 4: Verificando coincidencias ---');
+  console.log('\n=== VERIFICACION DE CADA SENSORID ===');
   let coincidencias = 0;
-  const resultados = [];
 
   for (let i = 0; i < sensorIds.length; i++) {
     const sensorId = sensorIds[i];
-    console.log(`\nVerificando sensorId ${i + 1}: ${sensorId}`);
+    console.log(`\n--- SensorId ${i + 1}: "${sensorId}" ---`);
     
     let encontrado = false;
     
     for (let j = 0; j < dedosPatron.length; j++) {
-      const dedoPatron = dedosPatron[j];
-      const storedHash = dedoPatron.dedos_registrados?.huella;
+      const patron = dedosPatron[j];
+      const storedHash = patron.dedos_registrados?.huella;
       
-      if (storedHash && this.verifySensorId(sensorId, storedHash)) {
-        console.log(`✅ Coincidencia con dedo ${dedoPatron.dedos_registrados?.dedo}`);
-        coincidencias++;
-        encontrado = true;
-        resultados.push({
-          sensorId,
-          dedoTipo: dedoPatron.dedos_registrados?.dedo,
-          orden: dedoPatron.orden,
-          coincide: true
-        });
-        break;
+      console.log(`  Comparando con patrón ${j + 1} (${patron.dedos_registrados?.dedo}):`);
+      
+      if (storedHash) {
+        const resultado = this.debugVerifySensorId(sensorId, storedHash);
+        if (resultado.isValid) {
+          console.log('  ✅ MATCH ENCONTRADO!');
+          coincidencias++;
+          encontrado = true;
+          break;
+        } else {
+          console.log('  ❌ No coincide');
+        }
+      } else {
+        console.log('  ❌ Hash vacío');
       }
     }
     
     if (!encontrado) {
-      console.log('❌ Sin coincidencia');
-      resultados.push({
-        sensorId,
-        coincide: false
-      });
+      console.log(`  ❌ SensorId "${sensorId}" no coincide con ningún patrón`);
     }
   }
 
-  // PASO 5: Resultado final
-  console.log('\n--- RESULTADO FINAL ---');
-  console.log('Coincidencias encontradas:', coincidencias);
-  console.log('Requeridas:', 3);
+  console.log(`\n=== RESULTADO FINAL ===`);
+  console.log(`Coincidencias: ${coincidencias} / ${sensorIds.length}`);
+  console.log(`Requeridas: 3`);
 
-  if (coincidencias >= 3) {
-    console.log('✅ TRANSACCIÓN AUTORIZADA');
+  const esValido = coincidencias >= 3;
+  console.log(`Resultado: ${esValido ? '✅ VÁLIDO' : '❌ INVÁLIDO'}`);
+
+  return {
+    valid: esValido,
+    message: esValido 
+      ? 'Patrón válido. Compra autorizada.'
+      : `Huellas insuficientes. Se encontraron ${coincidencias}/3.`,
+    coincidencias,
+    total: sensorIds.length
+  };
+}
+
+// Método especializado para debugging de hash
+private debugVerifySensorId(sensorId: string, storedHash: string): { isValid: boolean, details: any } {
+  console.log(`    🔍 DEBUG HASH para sensorId: "${sensorId}"`);
+  console.log(`    StoredHash: "${storedHash}"`);
+  
+  try {
+    // Verificar formato
+    const parts = storedHash.split(':');
+    if (parts.length !== 2) {
+      console.log(`    ❌ Formato incorrecto. Partes: ${parts.length}, Esperadas: 2`);
+      return { isValid: false, details: { error: 'Formato incorrecto', parts } };
+    }
+
+    const [salt, expectedHash] = parts;
+    console.log(`    Salt: "${salt}" (length: ${salt.length})`);
+    console.log(`    Hash esperado: "${expectedHash}" (length: ${expectedHash.length})`);
+
+    // Crear el string a hashear
+    const dataToHash = sensorId + this.ENCRYPTION_KEY + salt;
+    console.log(`    Datos a hashear: "${dataToHash}"`);
+    console.log(`    Breakdown:`);
+    console.log(`      - sensorId: "${sensorId}"`);
+    console.log(`      - ENCRYPTION_KEY: "${this.ENCRYPTION_KEY}"`);
+    console.log(`      - salt: "${salt}"`);
+
+    // Calcular hash
+    const calculatedHash = crypto.createHash('sha256')
+      .update(dataToHash)
+      .digest('hex');
+
+    console.log(`    Hash calculado: "${calculatedHash}"`);
+    console.log(`    Hash esperado:  "${expectedHash}"`);
+    
+    const isMatch = calculatedHash === expectedHash;
+    console.log(`    ¿Coinciden? ${isMatch ? '✅ SÍ' : '❌ NO'}`);
+
+    if (!isMatch) {
+      // Encontrar primera diferencia
+      const minLength = Math.min(calculatedHash.length, expectedHash.length);
+      for (let i = 0; i < minLength; i++) {
+        if (calculatedHash[i] !== expectedHash[i]) {
+          console.log(`    Primera diferencia en posición ${i}:`);
+          console.log(`      Calculado: '${calculatedHash[i]}'`);
+          console.log(`      Esperado:  '${expectedHash[i]}'`);
+          break;
+        }
+      }
+    }
+
     return {
-      valid: true,
-      message: 'Patrón válido. Compra autorizada.',
-      coincidencias,
-      cuentaTransaccional: cuentaTransaccional.numero_cuenta,
-      monto,
-      resultados
+      isValid: isMatch,
+      details: {
+        sensorId,
+        salt,
+        expectedHash,
+        calculatedHash,
+        dataToHash,
+        encryptionKey: this.ENCRYPTION_KEY
+      }
     };
-  } else {
-    console.log('❌ TRANSACCIÓN RECHAZADA');
-    return {
-      valid: false,
-      message: `Huellas insuficientes. Se requieren al menos 3, se encontraron ${coincidencias}.`,
-      coincidencias,
-      resultados
-    };
+
+  } catch (error) {
+    console.log(`    ❌ Error: ${error.message}`);
+    return { isValid: false, details: { error: error.message } };
   }
 }
+// Método simple para ver todos los hashes almacenados
+async mostrarHashesAlmacenados(cuentaId: string) {
+  console.log('=== HASHES ALMACENADOS ===');
+  
+  const cuentaTransaccional = await this.cuentaModel.findById(cuentaId);
+  if (!cuentaTransaccional) {
+    console.log('❌ Cuenta no encontrada');
+    return;
+  }
+
+  const cuentaApp = await this.cuentaAppModel.findOne({ 
+    persona: cuentaTransaccional.titular 
+  });
+  if (!cuentaApp) {
+    console.log('❌ Cuenta app no encontrada');
+    return;
+  }
+
+  const patrones = await this.dedoPatronModel
+    .find({ id_cuenta_app: cuentaApp._id })
+    .populate('dedos_registrados')
+    .exec();
+
+  console.log(`Total patrones: ${patrones.length}`);
+  
+  patrones.forEach((patron, index) => {
+    console.log(`\nPatrón ${index + 1}:`);
+    console.log(`  Dedo: ${patron.dedos_registrados?.dedo}`);
+    console.log(`  Hash: ${patron.dedos_registrados?.huella}`);
+    
+    // Descomponer el hash
+    if (patron.dedos_registrados?.huella) {
+      const parts = patron.dedos_registrados.huella.split(':');
+      if (parts.length === 2) {
+        console.log(`  Salt: ${parts[0]}`);
+        console.log(`  Hash: ${parts[1]}`);
+      } else {
+        console.log(`  ❌ Formato incorrecto: ${parts.length} partes`);
+      }
+    }
+  });
+}
+// Método especializado para debugging de hash
+
   private verifySensorId(sensorId: string, storedHash: string): boolean {
     try {
       const [salt, hash] = storedHash.split(':');

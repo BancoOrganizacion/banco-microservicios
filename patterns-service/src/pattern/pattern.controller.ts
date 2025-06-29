@@ -43,13 +43,13 @@ import { JwtDataGuard } from 'src/guards/jwt-data.guard';
 @Controller('patterns')
 @ApiBearerAuth('JWT-auth') // Para cuando implementes JWT
 @UseGuards(JwtDataGuard)
-@UsePipes(new ValidationPipe({ 
-  whitelist: true, 
+@UsePipes(new ValidationPipe({
+  whitelist: true,
   forbidNonWhitelisted: true,
-  transform: true 
+  transform: true
 }))
 export class PatternController {
-  constructor(private readonly patternService: PatternService) {}
+  constructor(private readonly patternService: PatternService) { }
 
   @Post()
   @ApiOperation({
@@ -103,7 +103,7 @@ export class PatternController {
       }
     }
   })
-  
+
   async crearPatron(
     @Body() crearPatronDto: CrearPatronDto,
     @Request() req: any // req.user.idCuentaApp
@@ -178,9 +178,9 @@ export class PatternController {
     description: 'ID de la cuenta (TEMPORAL: se removerá al implementar JWT)',
     required: false,
     example: 'cuenta_usuario_789',
-    schema: { 
+    schema: {
       type: 'string',
-      deprecated: true 
+      deprecated: true
     }
   })
   @ApiOkResponse({
@@ -359,40 +359,40 @@ export class PatternController {
     return this.patternService.obtenerPatronBasico(patronId);
   }
   @Post('validar-compra')
-@ApiOperation({ summary: 'Validar compra con patrón de huellas' })
-@ApiBody({
-  schema: {
-    type: 'object',
-    properties: {
-      cuentaId: { type: 'string', example: '665a1b...' },
-      monto: { type: 'string', example: '25.00' },
-      sensorIds: {
-        type: 'array',
-        items: { type: 'string', example: '41' }
-      }
-    },
-    required: ['cuentaId', 'monto', 'sensorIds']
-  }
-})
-@ApiResponse({
-  status: 200,
-  description: 'Resultado de la validación',
-  schema: {
-    type: 'object',
-    properties: {
-      valid: { type: 'boolean', example: true },
-      message: { type: 'string' }
+  @ApiOperation({ summary: 'Validar compra con patrón de huellas' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        cuentaId: { type: 'string', example: '665a1b...' },
+        monto: { type: 'string', example: '25.00' },
+        sensorIds: {
+          type: 'array',
+          items: { type: 'string', example: '41' }
+        }
+      },
+      required: ['cuentaId', 'monto', 'sensorIds']
     }
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Resultado de la validación',
+    schema: {
+      type: 'object',
+      properties: {
+        valid: { type: 'boolean', example: true },
+        message: { type: 'string' }
+      }
+    }
+  })
+  async validarCompra(
+    @Body() body: {
+      cuentaId: string;
+      monto: string;
+      sensorIds: string[];
+    }
+  ) {
+    return this.patternService.validarCompraConPatron(body);
   }
-})
-async validarCompra(
-  @Body() body: {
-    cuentaId: string;
-    monto: string;
-    sensorIds: string[];
-  }
-) {
-  return this.patternService.validarCompraConPatron(body);
-}
 
 }
