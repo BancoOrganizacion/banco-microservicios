@@ -3,8 +3,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { PatternService } from './pattern.service';
 import { PatternController } from './pattern.controller';
 import { CuentaApp, CuentaAppSchema, PatronAutenticacion, PatronAutenticacionSchema } from 'shared-models';
-import { DedoPatron, DedoPatronSchema } from 'shared-models';
-import { Schema as MongooseSchema } from 'mongoose';
+import { DedoPatron, DedoPatronSchema,Cuenta,CuentaSchema } from 'shared-models';
 import { JwtDataGuard } from 'src/guards/jwt-data.guard';
 import { JwtModule } from '@nestjs/jwt';
 
@@ -14,6 +13,7 @@ import { JwtModule } from '@nestjs/jwt';
       { name: PatronAutenticacion.name, schema: PatronAutenticacionSchema },
       { name: DedoPatron.name, schema: DedoPatronSchema },
       {name:CuentaApp.name, schema:CuentaAppSchema},
+      {name:Cuenta.name, schema: CuentaSchema}
     ]),
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'secretKey',
