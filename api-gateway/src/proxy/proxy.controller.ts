@@ -1114,4 +1114,80 @@ async getMovimientosCuenta(@Req() req: Request, @Res() res: Response) {
   async autorizarTransaccion(@Req() req: Request, @Res() res: Response) {
     return this.handleProxyRequest('transactions', req, res);
   }
+  @ApiTags('accounts')
+@ApiOperation({ summary: 'Validar transacción con patrones biométricos desde ESP32' })
+@ApiBody({
+  schema: {
+    type: 'object',
+    properties: {
+      cuentaId: {
+        type: 'string',
+        description: 'ID de la cuenta transaccional',
+        example: '686066c93ad1bb1d136aa2d8'
+      },
+      monto: {
+        type: 'string',
+        description: 'Monto de la transacción',
+        example: '25.00'
+      },
+      sensorIds: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'IDs de los sensores de huellas desde ESP32',
+        example: ['6', '8', '10']
+      }
+    },
+    required: ['cuentaId', 'monto', 'sensorIds']
+  }
+})
+@ApiResponse({
+  status: 200,
+  description: 'Resultado de la validación biométrica',
+  schema: {
+    type: 'object',
+    properties: {
+      valid: { 
+        type: 'boolean', 
+        example: true,
+        description: 'Indica si la validación fue exitosa'
+      },
+      message: { 
+        type: 'string', 
+        example: 'Patrón válido. Transacción autorizada.',
+        description: 'Mensaje descriptivo del resultado'
+      },
+      requiere_autenticacion: { 
+        type: 'boolean', 
+        example: true,
+        description: 'Indica si se requirió autenticación biométrica'
+      },
+      coincidencias: { 
+        type: 'number', 
+        example: 3,
+        description: 'Número de huellas que coincidieron'
+      },
+      requeridas: { 
+        type: 'number', 
+        example: 3,
+        description: 'Número mínimo de huellas requeridas'
+      }
+    }
+  }
+})
+@ApiResponse({ 
+  status: 400, 
+  description: 'Datos inválidos o error en validación',
+  schema: {
+    example: {
+      statusCode: 400,
+      message: 'Autenticación fallida. Se encontraron 1/3 huellas válidas.',
+      error: 'Bad Request'
+    }
+  }
+})
+@ApiResponse({ status: 404, description: 'Cuenta no encontrada' })
+@Post('accounts/cuentas/validar-transaccion-biometrica')
+async validarTransaccionBiometrica(@Req() req: Request, @Res() res: Response) {
+  return this.handleProxyRequest('accounts', req, res);
+}
 }

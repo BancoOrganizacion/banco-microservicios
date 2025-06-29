@@ -470,20 +470,7 @@ async mostrarHashesAlmacenados(cuentaId: string) {
 }
 // Método especializado para debugging de hash
 
-  private verifySensorId(sensorId: string, storedHash: string): boolean {
-    try {
-      const [salt, hash] = storedHash.split(':');
-      if (!salt || !hash) return false;
 
-      const expectedHash = crypto.createHash('sha256')
-        .update(sensorId + this.ENCRYPTION_KEY + salt)
-        .digest('hex');
-
-      return hash === expectedHash;
-    } catch (error) {
-      return false;
-    }
-  }
   // Método auxiliar para debuggear qué patrones existen en la base de datos
   async debugPatterns(personaId?: string) {
     console.log('=== DEBUG: VERIFICANDO TODOS LOS PATRONES ===');
@@ -558,4 +545,247 @@ async mostrarHashesAlmacenados(cuentaId: string) {
       console.log('  Titular:', cuenta.titular);
     });
   }
+  async validarRestriccionesYPatrones(body: {
+  cuentaId: string;
+  monto: string;
+  sensorIds: string[];
+}) {
+  const { cuentaId, monto, sensorIds } = body;
+  const montoNumerico = parseFloat(monto);
+
+  console.log('\n=== VALIDACIÓN DE RESTRICCIONES Y PATRONES ===');
+  console.log('CuentaId:', cuentaId);
+  console.log('Monto:', montoNumerico);
+  console.log('SensorIds recibidos:', sensorIds);
+
+  // Paso 1: Obtener cuenta transaccional
+  const cuentaTransaccional = await this.cuentaModel.findById(cuentaId);
+  if (!cuentaTransaccional) {
+    return { valid: false, message: 'Cuenta no encontrada.' };
+  }
+
+  // Paso 2: Obtener restricciones de la cuenta
+  // AQUÍ ESTÁ EL PROBLEMA: El servicio de patterns NO tiene acceso a las restricciones
+  // Las restricciones están en accounts-service, no en patterns-service
+  
+  // SOLUCIÓN: Necesitas hacer una llamada al microservicio de cuentas
+  // O mover esta lógica al accounts-service
+  
+  // Por ahora, simulo que obtienes las restricciones:
+  const restricciones = cuentaTransaccional.restricciones || [];
+  
+  // Paso 3: Buscar restricción aplicable
+  const restriccionAplicable = restricciones.find(r => 
+    montoNumerico >= r.monto_desde && montoNumerico <= r.monto_hasta
+  );
+
+  if (!restriccionAplicable) {
+    // Si no hay restricción, la transacción es válida sin autenticación
+    return { 
+      valid: true, 
+      message: 'Transacción válida sin autenticación requerida.',
+      requiere_autenticacion: false
+    };
+  }
+
+  if (!restriccionAplicable.patron_autenticacion) {
+    return { 
+      valid: true, 
+      message: 'Restricción encontrada pero sin patrón requerido.',
+      requiere_autenticacion: false
+    };
+  }
+
+  // Paso 4: Validar el patrón de autenticación
+  console.log('Patrón requerido:', restriccionAplicable.patron_autenticacion);
+  
+  return await this.validarPatronConSensorIds(
+    restriccionAplicable.patron_autenticacion.toString(),
+    sensorIds
+  );
+}
+
+// 2. NUEVO MÉTODO PARA VALIDAR PATRÓN CON SENSOR IDS
+async validarPatronConSensorIds(patronId: string, sensorIds: string[]) {
+  try {
+    console.log('\n=== VALIDANDO PATRÓN CON SENSOR IDS ===');
+    console.log('PatronId:', patronId);
+    console.log('SensorIds a validar:', sensorIds);
+
+    // Obtener el patrón de autenticación
+    const patron = await this.patronAutenticacionModel
+      .findById(patronId)
+      .populate({
+        path: 'dedos_patron',
+        populate: {
+          path: 'dedos_registrados',
+          model: 'DedoRegistrado'
+        }
+      })
+      .exec();
+
+    if (!patron || !patron.activo) {
+      return { 
+        valid: false, 
+        message: 'Patrón de autenticación no encontrado o inactivo.' 
+      };
+    }
+
+    console.log('Patrón encontrado:', patron.nombre);
+    console.log('Dedos en el patrón:', patron.dedos_patron.length);
+
+    // Validar cada sensorId recibido
+    let coincidencias = 0;
+    const detallesValidacion = [];
+
+    for (const sensorId of sensorIds) {
+      console.log(`\n--- Validando sensorId: "${sensorId}" ---`);
+      
+      let encontrado = false;
+      
+      for (const dedoPatron of patron.dedos_patron) {
+        if (dedoPatron.dedos_registrados && dedoPatron.dedos_registrados.huella) {
+          const hashAlmacenado = dedoPatron.dedos_registrados.huella;
+          
+          if (this.verifySensorId(sensorId, hashAlmacenado)) {
+            console.log(`✅ SensorId "${sensorId}" coincide con dedo ${dedoPatron.dedos_registrados.dedo}`);
+            coincidencias++;
+            encontrado = true;
+            
+            detallesValidacion.push({
+              sensorId,
+              dedo: dedoPatron.dedos_registrados.dedo,
+              orden: dedoPatron.orden,
+              valido: true
+            });
+            break;
+          }
+        }
+      }
+      
+      if (!encontrado) {
+        console.log(`❌ SensorId "${sensorId}" no coincide con ningún patrón`);
+        detallesValidacion.push({
+          sensorId,
+          valido: false
+        });
+      }
+    }
+
+    // Definir cuántas coincidencias se requieren (puedes ajustar esto)
+    const coincidenciasRequeridas = Math.min(3, patron.dedos_patron.length);
+    const esValido = coincidencias >= coincidenciasRequeridas;
+
+    console.log(`\n=== RESULTADO ===`);
+    console.log(`Coincidencias: ${coincidencias}/${sensorIds.length}`);
+    console.log(`Requeridas: ${coincidenciasRequeridas}`);
+    console.log(`Resultado: ${esValido ? '✅ VÁLIDO' : '❌ INVÁLIDO'}`);
+
+    return {
+      valid: esValido,
+      message: esValido 
+        ? 'Patrón válido. Transacción autorizada.'
+        : `Huellas insuficientes. Se encontraron ${coincidencias}/${coincidenciasRequeridas} requeridas.`,
+      coincidencias,
+      total: sensorIds.length,
+      requeridas: coincidenciasRequeridas,
+      detalles: detallesValidacion
+    };
+
+  } catch (error) {
+    console.error('Error en validación:', error);
+    return {
+      valid: false,
+      message: `Error en validación: ${error.message}`
+    };
+  }
+}
+
+// 3. CORRECCIÓN DEL MÉTODO verifySensorId
+private verifySensorId(sensorId: string, storedHash: string): boolean {
+  try {
+    console.log(`    🔍 Verificando sensorId: "${sensorId}"`);
+    console.log(`    Hash almacenado: "${storedHash}"`);
+    
+    const parts = storedHash.split(':');
+    if (parts.length !== 2) {
+      console.log(`    ❌ Formato de hash incorrecto`);
+      return false;
+    }
+
+    const [salt, expectedHash] = parts;
+    
+    // CORRECCIÓN: Asegurar que el string sea exactamente igual al usado en el registro
+    const dataToHash = sensorId + this.ENCRYPTION_KEY + salt;
+    
+    const calculatedHash = crypto.createHash('sha256')
+      .update(dataToHash)
+      .digest('hex');
+
+    const isMatch = calculatedHash === expectedHash;
+    
+    console.log(`    Salt: "${salt}"`);
+    console.log(`    Hash esperado: "${expectedHash}"`);
+    console.log(`    Hash calculado: "${calculatedHash}"`);
+    console.log(`    ¿Coincide? ${isMatch ? '✅ SÍ' : '❌ NO'}`);
+
+    return isMatch;
+  } catch (error) {
+    console.log(`    ❌ Error: ${error.message}`);
+    return false;
+  }
+}
+
+// 4. MÉTODO PARA DEBUGGING (temporal)
+async debugPatronesUsuario(cuentaId: string) {
+  console.log('\n=== DEBUG: PATRONES DEL USUARIO ===');
+  
+  const cuentaTransaccional = await this.cuentaModel.findById(cuentaId);
+  if (!cuentaTransaccional) {
+    console.log('❌ Cuenta transaccional no encontrada');
+    return;
+  }
+
+  const cuentaApp = await this.cuentaAppModel.findOne({ 
+    persona: cuentaTransaccional.titular 
+  });
+  if (!cuentaApp) {
+    console.log('❌ Cuenta app no encontrada');
+    return;
+  }
+
+  console.log('Titular:', cuentaTransaccional.titular);
+  console.log('Cuenta app ID:', cuentaApp._id);
+
+  // Buscar dedos patrón
+  const dedosPatron = await this.dedoPatronModel
+    .find({ id_cuenta_app: cuentaApp._id })
+    .populate('dedos_registrados')
+    .exec();
+
+  console.log(`Total dedos patrón: ${dedosPatron.length}`);
+  
+  dedosPatron.forEach((dedo, index) => {
+    console.log(`\nDedo ${index + 1}:`);
+    console.log(`  ID: ${dedo._id}`);
+    console.log(`  Dedo: ${dedo.dedos_registrados?.dedo}`);
+    console.log(`  Hash: ${dedo.dedos_registrados?.huella?.substring(0, 30)}...`);
+    console.log(`  Orden: ${dedo.orden}`);
+  });
+
+  // Buscar patrones de autenticación que usen estos dedos
+  const dedosIds = dedosPatron.map(d => d._id);
+  const patrones = await this.patronAutenticacionModel
+    .find({ dedos_patron: { $in: dedosIds } })
+    .exec();
+
+  console.log(`\nPatrones de autenticación: ${patrones.length}`);
+  patrones.forEach((patron, index) => {
+    console.log(`\nPatrón ${index + 1}:`);
+    console.log(`  ID: ${patron._id}`);
+    console.log(`  Nombre: ${patron.nombre}`);
+    console.log(`  Activo: ${patron.activo}`);
+    console.log(`  Dedos en patrón: ${patron.dedos_patron.length}`);
+  });
+}
 }

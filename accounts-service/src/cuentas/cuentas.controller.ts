@@ -384,4 +384,81 @@ async updateRestriccion(
     this.logger.debug(`Microservicio: Obteniendo restricciones de cuenta: ${cuentaId}`);
     return this.cuentasService.getRestricciones(cuentaId);
   }
+  // accounts-service/src/cuentas/cuentas.controller.ts
+// AGREGAR ESTE ENDPOINT AL CONTROLADOR:
+
+@ApiOperation({ summary: 'Validar transacción con patrones biométricos' })
+@ApiBody({
+  schema: {
+    type: 'object',
+    properties: {
+      cuentaId: {
+        type: 'string',
+        description: 'ID de la cuenta transaccional',
+        example: '686066c93ad1bb1d136aa2d8'
+      },
+      monto: {
+        type: 'string',
+        description: 'Monto de la transacción',
+        example: '25.00'
+      },
+      sensorIds: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'IDs de los sensores de huellas',
+        example: ['6', '8', '10']
+      }
+    },
+    required: ['cuentaId', 'monto', 'sensorIds']
+  }
+})
+@ApiResponse({
+  status: 200,
+  description: 'Resultado de la validación',
+  schema: {
+    type: 'object',
+    properties: {
+      valid: { type: 'boolean', example: true },
+      message: { type: 'string', example: 'Patrón válido. Transacción autorizada.' },
+      requiere_autenticacion: { type: 'boolean', example: true },
+      coincidencias: { type: 'number', example: 3 },
+      requeridas: { type: 'number', example: 3 }
+    }
+  }
+})
+@ApiResponse({ status: 400, description: 'Datos inválidos' })
+@ApiResponse({ status: 404, description: 'Cuenta no encontrada' })
+@Post('validar-transaccion-biometrica')
+async validarTransaccionBiometrica(@Body() body: {
+  cuentaId: string;
+  monto: string;
+  sensorIds: string[];
+}) {
+  try {
+    this.logger.debug(`Validando transacción biométrica para cuenta: ${body.cuentaId}`);
+    
+    // Validar parámetros
+    if (!body.cuentaId || !body.monto || !Array.isArray(body.sensorIds)) {
+      throw new BadRequestException('Parámetros inválidos. Se requiere cuentaId, monto y sensorIds.');
+    }
+
+    if (body.sensorIds.length === 0) {
+      throw new BadRequestException('Se requiere al menos un sensorId.');
+    }
+
+    const resultado = await this.cuentasService.validarTransaccionConPatrones(body);
+    
+    this.logger.debug(`Resultado de validación: ${JSON.stringify(resultado)}`);
+    
+    return resultado;
+  } catch (error) {
+    this.logger.error(`Error en validación biométrica: ${error.message}`);
+    
+    if (error instanceof BadRequestException) {
+      throw error;
+    }
+    
+    throw new BadRequestException('Error al validar la transacción biométrica');
+  }
+}
 }

@@ -498,6 +498,182 @@ export class CuentasService {
     return cuenta.save();
   }
 
+// accounts-service/src/cuentas/cuentas.service.ts
+// AGREGAR ESTE MÉTODO AL SERVICIO DE CUENTAS:
 
+async validarTransaccionConPatrones(body: {
+  cuentaId: string;
+  monto: string;
+  sensorIds: string[];
+}) {
+  const { cuentaId, monto, sensorIds } = body;
+  const montoNumerico = parseFloat(monto);
+
+  console.log('\n=== VALIDACIÓN DE TRANSACCIÓN CON PATRONES ===');
+  console.log('CuentaId:', cuentaId);
+  console.log('Monto:', montoNumerico);
+  console.log('SensorIds recibidos:', sensorIds);
+
+  // Paso 1: Obtener cuenta
+  const cuenta = await this.cuentaModel.findById(cuentaId);
+  if (!cuenta) {
+    return { valid: false, message: 'Cuenta no encontrada.' };
+  }
+
+  // Paso 2: Verificar estado de la cuenta
+  if (cuenta.estado !== 'ACTIVA') {
+    return { valid: false, message: 'La cuenta no está activa.' };
+  }
+
+  // Paso 3: Buscar restricción aplicable
+  const restriccionAplicable = cuenta.restricciones.find(r => 
+    montoNumerico >= r.monto_desde && montoNumerico <= r.monto_hasta
+  );
+
+  console.log('Restricción aplicable:', restriccionAplicable);
+
+  if (!restriccionAplicable) {
+    // Sin restricción = transacción válida
+    return { 
+      valid: true, 
+      message: 'Transacción válida sin autenticación requerida.',
+      requiere_autenticacion: false
+    };
+  }
+
+  if (!restriccionAplicable.patron_autenticacion) {
+    // Restricción sin patrón = transacción válida
+    return { 
+      valid: true, 
+      message: 'Restricción encontrada pero sin patrón de autenticación requerido.',
+      requiere_autenticacion: false
+    };
+  }
+
+  // Paso 4: Validar patrón de autenticación
+  console.log('Validando patrón:', restriccionAplicable.patron_autenticacion);
+  
+  try {
+    // Aquí deberías llamar al microservicio de patterns
+    // Por ahora valido directamente en este servicio
+    
+    // Obtener el patrón de autenticación
+    const patron = await this.patternModel
+      .findById(restriccionAplicable.patron_autenticacion)
+      .exec();
+
+    if (!patron || !patron.activo) {
+      return { 
+        valid: false, 
+        message: 'Patrón de autenticación no encontrado o inactivo.' 
+      };
+    }
+
+    // Buscar dedos patrón asociados al usuario
+    const cuentaApp = await this.getCuentaAppByTitular(cuenta.titular.toString());
+    if (!cuentaApp) {
+      return { valid: false, message: 'Usuario no encontrado.' };
+    }
+
+    // Obtener dedos patrón del usuario que están en el patrón de autenticación
+    const dedosPatronUsuario = await this.getDedosPatronUsuario(cuentaApp._id);
+    const dedosEnPatron = patron.dedos_patron.filter(dedoId => 
+      dedosPatronUsuario.some(dpu => dpu._id.toString() === dedoId.toString())
+    );
+
+    if (dedosEnPatron.length === 0) {
+      return { 
+        valid: false, 
+        message: 'No se encontraron dedos del usuario en el patrón requerido.' 
+      };
+    }
+
+    // Validar cada sensorId recibido
+    let coincidencias = 0;
+    
+    for (const sensorId of sensorIds) {
+      for (const dedoPatronId of dedosEnPatron) {
+        const dedoPatron = dedosPatronUsuario.find(d => d._id.toString() === dedoPatronId.toString());
+        
+        if (dedoPatron && dedoPatron.dedos_registrados?.huella) {
+          if (this.verifySensorId(sensorId, dedoPatron.dedos_registrados.huella)) {
+            coincidencias++;
+            break; // Salir del loop interno cuando encuentra coincidencia
+          }
+        }
+      }
+    }
+
+    const coincidenciasRequeridas = Math.min(3, dedosEnPatron.length);
+    const esValido = coincidencias >= coincidenciasRequeridas;
+
+    return {
+      valid: esValido,
+      message: esValido 
+        ? 'Patrón válido. Transacción autorizada.'
+        : `Autenticación fallida. Se encontraron ${coincidencias}/${coincidenciasRequeridas} huellas válidas.`,
+      coincidencias,
+      requeridas: coincidenciasRequeridas,
+      patron_usado: patron._id
+    };
+
+  } catch (error) {
+    this.logger.error(`Error en validación de patrón: ${error.message}`);
+    return {
+      valid: false,
+      message: `Error en validación: ${error.message}`
+    };
+  }
+}
+
+// MÉTODOS AUXILIARES NECESARIOS:
+
+private async getCuentaAppByTitular(titularId: string) {
+  // Aquí deberías llamar al microservicio de usuarios
+  // Para obtener la cuenta app del titular
+  try {
+    return await firstValueFrom(
+      this.usersClient.send('users.getCuentaAppByPersona', titularId)
+    );
+  } catch (error) {
+    this.logger.error(`Error al obtener cuenta app: ${error.message}`);
+    return null;
+  }
+}
+
+private async getDedosPatronUsuario(cuentaAppId: string) {
+  // Este método debería llamar al microservicio de fingerprints/patterns
+  // Para obtener los dedos patrón del usuario
+  // Por simplicidad, aquí muestro la lógica directa:
+  
+  // En un ambiente real, esto sería una llamada a otro microservicio:
+  // return await firstValueFrom(
+  //   this.patternsClient.send('patterns.getDedosPatronByCuentaApp', cuentaAppId)
+  // );
+  
+  // Lógica temporal (deberías moverla al microservicio correspondiente):
+  return []; // Placeholder
+}
+
+private verifySensorId(sensorId: string, storedHash: string): boolean {
+  try {
+    const ENCRYPTION_KEY = process.env.FINGERPRINT_ENCRYPTION_KEY || 'your-32-character-secret-key-here!';
+    
+    const parts = storedHash.split(':');
+    if (parts.length !== 2) return false;
+
+    const [salt, expectedHash] = parts;
+    
+    const dataToHash = sensorId + ENCRYPTION_KEY + salt;
+    const calculatedHash = require('crypto')
+      .createHash('sha256')
+      .update(dataToHash)
+      .digest('hex');
+
+    return calculatedHash === expectedHash;
+  } catch (error) {
+    return false;
+  }
+}
 
 }
