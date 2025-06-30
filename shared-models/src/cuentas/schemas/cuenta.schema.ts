@@ -48,8 +48,7 @@ export class Cuenta extends Document {
   })
   titular: Usuario;
 
-  @Prop({ type: [{ type: MongooseSchema.Types.ObjectId, ref: 'Movimiento' }], default: [] })
-  movimientos: MongooseSchema.Types.ObjectId[];
+ 
 
   @Prop({ type: [RestriccionSchema], default: [] })
   restricciones: Restriccion[];

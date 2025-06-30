@@ -31,6 +31,8 @@ export class Transaccion extends Document {
 
   @Prop({ required: true })
   monto: number;
+  @Prop({ required:true})
+  montoAnterior:number;
 
   @Prop({ 
     type: MongooseSchema.Types.ObjectId, 

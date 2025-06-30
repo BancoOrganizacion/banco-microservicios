@@ -21,7 +21,7 @@ export class CuentasService {
     @InjectModel(PatronAutenticacion.name) private patternModel: Model<PatronAutenticacion>,
     @Inject('USERS_SERVICE') private readonly usersClient: ClientProxy,
     @Inject('AUTH_SERVICE') private readonly authClient: ClientProxy
-  ) {}
+  ) { }
 
   /**
    * Genera un número de cuenta único de 10 dígitos
@@ -29,14 +29,14 @@ export class CuentasService {
   private async generarNumeroCuenta(): Promise<string> {
     let numeroCuenta;
     let cuentaExistente;
-    
+
     do {
       // Generar número aleatorio de 10 dígitos
       numeroCuenta = Math.floor(1000000000 + Math.random() * 9000000000).toString();
       // Verificar si ya existe
       cuentaExistente = await this.cuentaModel.findOne({ numero_cuenta: numeroCuenta }).exec();
     } while (cuentaExistente);
-    
+
     return numeroCuenta;
   }
 
@@ -49,24 +49,24 @@ export class CuentasService {
       const usuario = await firstValueFrom(
         this.usersClient.send('users.findOne', createCuentaDto.titular)
       );
-      
+
       if (!usuario) {
         throw new NotFoundException(`Usuario con ID ${createCuentaDto.titular} no encontrado`);
       }
-  
+
       // Verificar si el usuario ya tiene 2 cuentas
-      const cuentasUsuario = await this.cuentaModel.find({ 
+      const cuentasUsuario = await this.cuentaModel.find({
         titular: createCuentaDto.titular,
         estado: { $ne: EstadoCuenta.CANCELADA }
       }).exec();
-      
+
       if (cuentasUsuario.length >= 2) {
         throw new BadRequestException(`El usuario ya tiene el máximo de 2 cuentas permitidas`);
       }
-  
+
       // Generar número de cuenta único
       const numeroCuenta = await this.generarNumeroCuenta();
-  
+
       // Crear nueva cuenta
       const nuevaCuenta = new this.cuentaModel({
         ...createCuentaDto,
@@ -76,10 +76,10 @@ export class CuentasService {
         restricciones: [],
         movimientos: []
       });
-  
+
       // Guardar la cuenta
       const cuentaGuardada = await nuevaCuenta.save();
-      
+
       // Agregar la cuenta al usuario en CuentaApp
       try {
         await firstValueFrom(
@@ -92,12 +92,12 @@ export class CuentasService {
         this.logger.error(`Error al vincular cuenta con usuario: ${error.message}`);
         // Considera si debes eliminar la cuenta creada si falla este paso
       }
-      
+
       return cuentaGuardada;
     } catch (error) {
       this.logger.error(`Error al crear cuenta: ${error.message}`);
-      if (error instanceof NotFoundException || 
-          error instanceof BadRequestException) {
+      if (error instanceof NotFoundException ||
+        error instanceof BadRequestException) {
         throw error;
       }
       throw new BadRequestException(`Error al crear cuenta: ${error.message}`);
@@ -115,7 +115,7 @@ export class CuentasService {
    * Obtiene las cuentas de un usuario específico
    */
   async findByUsuario(usuarioId: string): Promise<Cuenta[]> {
-    return this.cuentaModel.find({ 
+    return this.cuentaModel.find({
       titular: usuarioId,
       estado: { $ne: EstadoCuenta.CANCELADA }
     }).exec();
@@ -126,11 +126,11 @@ export class CuentasService {
    */
   async findOne(id: string): Promise<Cuenta> {
     const cuenta = await this.cuentaModel.findById(id).exec();
-    
+
     if (!cuenta) {
       throw new NotFoundException(`Cuenta con ID ${id} no encontrada`);
     }
-    
+
     return cuenta;
   }
 
@@ -139,11 +139,11 @@ export class CuentasService {
    */
   async findByNumeroCuenta(numeroCuenta: string): Promise<Cuenta> {
     const cuenta = await this.cuentaModel.findOne({ numero_cuenta: numeroCuenta }).exec();
-    
+
     if (!cuenta) {
       throw new NotFoundException(`Cuenta con número ${numeroCuenta} no encontrada`);
     }
-    
+
     return cuenta;
   }
 
@@ -154,11 +154,11 @@ export class CuentasService {
     const cuentaActualizada = await this.cuentaModel
       .findByIdAndUpdate(id, updateCuentaDto, { new: true })
       .exec();
-    
+
     if (!cuentaActualizada) {
       throw new NotFoundException(`Cuenta con ID ${id} no encontrada`);
     }
-    
+
     return cuentaActualizada;
   }
 
@@ -167,15 +167,15 @@ export class CuentasService {
    */
   async cancelarCuenta(id: string): Promise<Cuenta> {
     const cuenta = await this.cuentaModel.findById(id).exec();
-    
+
     if (!cuenta) {
       throw new NotFoundException(`Cuenta con ID ${id} no encontrada`);
     }
-    
+
     if (cuenta.monto_actual > 0) {
       throw new BadRequestException(`No se puede cancelar una cuenta con saldo positivo`);
     }
-    
+
     cuenta.estado = EstadoCuenta.CANCELADA;
     return cuenta.save();
   }
@@ -185,16 +185,16 @@ export class CuentasService {
    */
   async addRestriccion(id: string, restriccion: CreateRestriccionDto): Promise<Cuenta> {
     const cuenta = await this.cuentaModel.findById(id).exec();
-    
+
     if (!cuenta) {
       throw new NotFoundException(`Cuenta con ID ${id} no encontrada`);
     }
-    
+
     // Validar que monto_desde sea menor que monto_hasta
     if (restriccion.monto_desde >= restriccion.monto_hasta) {
       throw new BadRequestException('El monto inicial debe ser menor que el monto final');
     }
-    
+
     // Verificar solapamiento con otras restricciones (sin permitir valores límite compartidos)
     const solapamiento = cuenta.restricciones.some(r =>
       restriccion.monto_desde <= r.monto_hasta && restriccion.monto_hasta >= r.monto_desde
@@ -203,13 +203,13 @@ export class CuentasService {
     if (solapamiento) {
       throw new BadRequestException('Los rangos de monto se solapan con restricciones existentes');
     }
-    
+
     // Crear explícitamente un objeto con la estructura exacta esperada por el esquema
     const nuevaRestriccion = {
       monto_desde: restriccion.monto_desde,
       monto_hasta: restriccion.monto_hasta
     };
-    
+
     // Si hay un patron_autenticacion, añadirlo (solo si no es null/undefined)
     if (restriccion.patron_autenticacion) {
       nuevaRestriccion['patron_autenticacion'] = new Types.ObjectId(restriccion.patron_autenticacion);
@@ -223,13 +223,13 @@ export class CuentasService {
       { $push: { restricciones: nuevaRestriccion } },
       { new: true }
     ).exec();
-    
+
     console.log("Cuenta actualizada:", JSON.stringify(cuentaActualizada, null, 2));
-    
+
     if (!cuentaActualizada) {
       throw new NotFoundException(`Cuenta con ID ${id} no encontrada`);
     }
-    
+
     return cuentaActualizada;
   }
 
@@ -238,16 +238,16 @@ export class CuentasService {
    */
   async removeRestriccion(cuentaId: string, restriccionId: string): Promise<Cuenta> {
     const cuenta = await this.cuentaModel.findById(cuentaId).exec();
-    
+
     if (!cuenta) {
       throw new NotFoundException(`Cuenta con ID ${cuentaId} no encontrada`);
     }
-    
+
     // Filtrar restricciones para eliminar la indicada
     cuenta.restricciones = cuenta.restricciones.filter(
       r => r._id.toString() !== restriccionId
     );
-    
+
     return cuenta.save();
   }
 
@@ -276,19 +276,49 @@ export class CuentasService {
       estado: { $in: ['AUTORIZADA', 'COMPLETADA'] }
     };
 
-    const transacciones = await this.trxModel.find(query).exec();
+    const transacciones = await this.trxModel.find(query)
+      .sort({ createdAt: -1 }) // Más recientes primero
+      .limit(50) // Limitar a los últimos 50 movimientos
+      .exec();
 
-    // Mapear las transacciones para devolver solo los datos relevantes - SIN COMISIÓN
-    return transacciones.map(transaccion => ({
-      numero_transaccion: transaccion.numero_transaccion,
-      monto_total: transaccion.monto, // Solo el monto, sin comisión
-      descripcion: transaccion.descripcion,
-      tipo: transaccion.cuenta_origen.toString() === cuenta._id.toString() ? 'SALIDA' : 'ENTRADA',
-      cuenta_origen: transaccion.cuenta_origen,
-      cuenta_destino: transaccion.cuenta_destino,
-      fecha: transaccion.createdAt,
-      titular_cuenta: cuenta.titular,
-    }));
+    // Mapear las transacciones para devolver solo los datos relevantes con información de saldos
+    return transacciones.map(transaccion => {
+      const esOrigen = transaccion.cuenta_origen.toString() === cuenta._id.toString();
+
+      // Calcular el saldo después de la transacción
+      let saldo_anterior = null;
+      let saldo_despues = null;
+
+      if (esOrigen && transaccion.montoAnterior !== null && transaccion.montoAnterior !== undefined) {
+        // Si es cuenta origen y tenemos el saldo anterior, calculamos el saldo después
+        saldo_anterior = transaccion.montoAnterior;
+        saldo_despues = transaccion.montoAnterior - transaccion.monto;
+      }
+      // Para cuenta destino, no tenemos el saldo anterior guardado, pero podríamos calcularlo
+      // si es necesario mediante consultas adicionales
+
+      return {
+        _id: transaccion._id,
+        numero_transaccion: transaccion.numero_transaccion,
+        monto: transaccion.monto,
+        descripcion: transaccion.descripcion || 'Transferencia',
+        tipo: esOrigen ? 'SALIDA' : 'ENTRADA', // Desde la perspectiva de esta cuenta
+        estado: transaccion.estado,
+        fecha: transaccion.createdAt,
+
+        // Información de la otra cuenta involucrada
+        cuenta_contraparte: esOrigen ? transaccion.cuenta_destino : transaccion.cuenta_origen,
+
+        // Información de saldos (solo disponible para cuenta origen)
+        saldo_anterior: saldo_anterior,
+        saldo_despues: saldo_despues,
+
+        // Metadatos adicionales
+        titular_cuenta: cuenta.titular,
+        requiere_autenticacion: transaccion.requiere_autenticacion || false,
+        fecha_procesamiento: transaccion.fecha_procesamiento,
+      };
+    });
   }
 
   // OPCIONAL: Método para obtener todas las cuentas del usuario (útil para el frontend)
@@ -309,15 +339,15 @@ export class CuentasService {
    */
   async actualizarSaldo(cuentaId: string, monto: number): Promise<Cuenta> {
     const cuenta = await this.cuentaModel.findById(cuentaId).exec();
-    
+
     if (!cuenta) {
       throw new NotFoundException(`Cuenta con ID ${cuentaId} no encontrada`);
     }
-    
+
     // Actualizar el saldo
     cuenta.monto_actual += monto;
     cuenta.fecha_ultimo_movimiento = new Date();
-    
+
     return cuenta.save();
   }
 
@@ -329,37 +359,45 @@ export class CuentasService {
     monto: number,
     movimientoId: Schema.Types.ObjectId
   }): Promise<void> {
+    const logger = new Logger('CuentasService.procesarMovimiento');
+
     try {
+      logger.debug(`🔄 Procesando movimiento para cuenta ${data.cuentaId}`);
+      logger.debug(`💰 Monto: ${data.monto}`);
+      logger.debug(`🆔 MovimientoId: ${data.movimientoId}`);
+
       const cuenta = await this.cuentaModel.findById(data.cuentaId).exec();
-      
+
       if (!cuenta) {
+        logger.error(`❌ Cuenta con ID ${data.cuentaId} no encontrada`);
         throw new NotFoundException(`Cuenta con ID ${data.cuentaId} no encontrada`);
       }
-      
-      // Actualizar saldo
-      cuenta.monto_actual += data.monto;
+
+      logger.debug(`📋 Cuenta encontrada: ${cuenta.numero_cuenta}, saldo actual: ${cuenta.monto_actual}`);
+
+
+      // Actualizar fecha del último movimiento
       cuenta.fecha_ultimo_movimiento = new Date();
-      
-      // Agregar referencia al movimiento
-      cuenta.movimientos.push(data.movimientoId);
-      
+
       await cuenta.save();
-      
-      this.logger.log(`Procesado movimiento ${data.movimientoId} para cuenta ${data.cuentaId}`);
+
+      logger.log(`✅ Movimiento ${data.movimientoId} procesado exitosamente para cuenta ${data.cuentaId}`);
+
     } catch (error) {
-      this.logger.error(`Error al procesar movimiento: ${error.message}`);
+      logger.error(`❌ Error al procesar movimiento:`, error);
+      logger.error(`📊 Datos recibidos:`, JSON.stringify(data));
       throw error;
     }
   }
-  
+
   // Obtener todas las restricciones de una cuenta
   async getRestricciones(cuentaId: string): Promise<Restriccion[]> {
     const cuenta = await this.cuentaModel.findById(cuentaId).exec();
-    
+
     if (!cuenta) {
       throw new NotFoundException(`Cuenta con ID ${cuentaId} no encontrada`);
     }
-    
+
     return cuenta.restricciones;
   }
 
@@ -498,182 +536,180 @@ export class CuentasService {
     return cuenta.save();
   }
 
-// accounts-service/src/cuentas/cuentas.service.ts
-// AGREGAR ESTE MÉTODO AL SERVICIO DE CUENTAS:
 
-async validarTransaccionConPatrones(body: {
-  cuentaId: string;
-  monto: string;
-  sensorIds: string[];
-}) {
-  const { cuentaId, monto, sensorIds } = body;
-  const montoNumerico = parseFloat(monto);
+  async validarTransaccionConPatrones(body: {
+    cuentaId: string;
+    monto: string;
+    sensorIds: string[];
+  }) {
+    const { cuentaId, monto, sensorIds } = body;
+    const montoNumerico = parseFloat(monto);
 
-  console.log('\n=== VALIDACIÓN DE TRANSACCIÓN CON PATRONES ===');
-  console.log('CuentaId:', cuentaId);
-  console.log('Monto:', montoNumerico);
-  console.log('SensorIds recibidos:', sensorIds);
+    console.log('\n=== VALIDACIÓN DE TRANSACCIÓN CON PATRONES ===');
+    console.log('CuentaId:', cuentaId);
+    console.log('Monto:', montoNumerico);
+    console.log('SensorIds recibidos:', sensorIds);
 
-  // Paso 1: Obtener cuenta
-  const cuenta = await this.cuentaModel.findById(cuentaId);
-  if (!cuenta) {
-    return { valid: false, message: 'Cuenta no encontrada.' };
-  }
-
-  // Paso 2: Verificar estado de la cuenta
-  if (cuenta.estado !== 'ACTIVA') {
-    return { valid: false, message: 'La cuenta no está activa.' };
-  }
-
-  // Paso 3: Buscar restricción aplicable
-  const restriccionAplicable = cuenta.restricciones.find(r => 
-    montoNumerico >= r.monto_desde && montoNumerico <= r.monto_hasta
-  );
-
-  console.log('Restricción aplicable:', restriccionAplicable);
-
-  if (!restriccionAplicable) {
-    // Sin restricción = transacción válida
-    return { 
-      valid: true, 
-      message: 'Transacción válida sin autenticación requerida.',
-      requiere_autenticacion: false
-    };
-  }
-
-  if (!restriccionAplicable.patron_autenticacion) {
-    // Restricción sin patrón = transacción válida
-    return { 
-      valid: true, 
-      message: 'Restricción encontrada pero sin patrón de autenticación requerido.',
-      requiere_autenticacion: false
-    };
-  }
-
-  // Paso 4: Validar patrón de autenticación
-  console.log('Validando patrón:', restriccionAplicable.patron_autenticacion);
-  
-  try {
-    // Aquí deberías llamar al microservicio de patterns
-    // Por ahora valido directamente en este servicio
-    
-    // Obtener el patrón de autenticación
-    const patron = await this.patternModel
-      .findById(restriccionAplicable.patron_autenticacion)
-      .exec();
-
-    if (!patron || !patron.activo) {
-      return { 
-        valid: false, 
-        message: 'Patrón de autenticación no encontrado o inactivo.' 
-      };
+    // Paso 1: Obtener cuenta
+    const cuenta = await this.cuentaModel.findById(cuentaId);
+    if (!cuenta) {
+      return { valid: false, message: 'Cuenta no encontrada.' };
     }
 
-    // Buscar dedos patrón asociados al usuario
-    const cuentaApp = await this.getCuentaAppByTitular(cuenta.titular.toString());
-    if (!cuentaApp) {
-      return { valid: false, message: 'Usuario no encontrado.' };
+    // Paso 2: Verificar estado de la cuenta
+    if (cuenta.estado !== 'ACTIVA') {
+      return { valid: false, message: 'La cuenta no está activa.' };
     }
 
-    // Obtener dedos patrón del usuario que están en el patrón de autenticación
-    const dedosPatronUsuario = await this.getDedosPatronUsuario(cuentaApp._id);
-    const dedosEnPatron = patron.dedos_patron.filter(dedoId => 
-      dedosPatronUsuario.some(dpu => dpu._id.toString() === dedoId.toString())
+    // Paso 3: Buscar restricción aplicable
+    const restriccionAplicable = cuenta.restricciones.find(r =>
+      montoNumerico >= r.monto_desde && montoNumerico <= r.monto_hasta
     );
 
-    if (dedosEnPatron.length === 0) {
-      return { 
-        valid: false, 
-        message: 'No se encontraron dedos del usuario en el patrón requerido.' 
+    console.log('Restricción aplicable:', restriccionAplicable);
+
+    if (!restriccionAplicable) {
+      // Sin restricción = transacción válida
+      return {
+        valid: true,
+        message: 'Transacción válida sin autenticación requerida.',
+        requiere_autenticacion: false
       };
     }
 
-    // Validar cada sensorId recibido
-    let coincidencias = 0;
-    
-    for (const sensorId of sensorIds) {
-      for (const dedoPatronId of dedosEnPatron) {
-        const dedoPatron = dedosPatronUsuario.find(d => d._id.toString() === dedoPatronId.toString());
-        
-        if (dedoPatron && dedoPatron.dedos_registrados?.huella) {
-          if (this.verifySensorId(sensorId, dedoPatron.dedos_registrados.huella)) {
-            coincidencias++;
-            break; // Salir del loop interno cuando encuentra coincidencia
+    if (!restriccionAplicable.patron_autenticacion) {
+      // Restricción sin patrón = transacción válida
+      return {
+        valid: true,
+        message: 'Restricción encontrada pero sin patrón de autenticación requerido.',
+        requiere_autenticacion: false
+      };
+    }
+
+    // Paso 4: Validar patrón de autenticación
+    console.log('Validando patrón:', restriccionAplicable.patron_autenticacion);
+
+    try {
+      // Aquí deberías llamar al microservicio de patterns
+      // Por ahora valido directamente en este servicio
+
+      // Obtener el patrón de autenticación
+      const patron = await this.patternModel
+        .findById(restriccionAplicable.patron_autenticacion)
+        .exec();
+
+      if (!patron || !patron.activo) {
+        return {
+          valid: false,
+          message: 'Patrón de autenticación no encontrado o inactivo.'
+        };
+      }
+
+      // Buscar dedos patrón asociados al usuario
+      const cuentaApp = await this.getCuentaAppByTitular(cuenta.titular.toString());
+      if (!cuentaApp) {
+        return { valid: false, message: 'Usuario no encontrado.' };
+      }
+
+      // Obtener dedos patrón del usuario que están en el patrón de autenticación
+      const dedosPatronUsuario = await this.getDedosPatronUsuario(cuentaApp._id);
+      const dedosEnPatron = patron.dedos_patron.filter(dedoId =>
+        dedosPatronUsuario.some(dpu => dpu._id.toString() === dedoId.toString())
+      );
+
+      if (dedosEnPatron.length === 0) {
+        return {
+          valid: false,
+          message: 'No se encontraron dedos del usuario en el patrón requerido.'
+        };
+      }
+
+      // Validar cada sensorId recibido
+      let coincidencias = 0;
+
+      for (const sensorId of sensorIds) {
+        for (const dedoPatronId of dedosEnPatron) {
+          const dedoPatron = dedosPatronUsuario.find(d => d._id.toString() === dedoPatronId.toString());
+
+          if (dedoPatron && dedoPatron.dedos_registrados?.huella) {
+            if (this.verifySensorId(sensorId, dedoPatron.dedos_registrados.huella)) {
+              coincidencias++;
+              break; // Salir del loop interno cuando encuentra coincidencia
+            }
           }
         }
       }
+
+      const coincidenciasRequeridas = Math.min(3, dedosEnPatron.length);
+      const esValido = coincidencias >= coincidenciasRequeridas;
+
+      return {
+        valid: esValido,
+        message: esValido
+          ? 'Patrón válido. Transacción autorizada.'
+          : `Autenticación fallida. Se encontraron ${coincidencias}/${coincidenciasRequeridas} huellas válidas.`,
+        coincidencias,
+        requeridas: coincidenciasRequeridas,
+        patron_usado: patron._id
+      };
+
+    } catch (error) {
+      this.logger.error(`Error en validación de patrón: ${error.message}`);
+      return {
+        valid: false,
+        message: `Error en validación: ${error.message}`
+      };
     }
-
-    const coincidenciasRequeridas = Math.min(3, dedosEnPatron.length);
-    const esValido = coincidencias >= coincidenciasRequeridas;
-
-    return {
-      valid: esValido,
-      message: esValido 
-        ? 'Patrón válido. Transacción autorizada.'
-        : `Autenticación fallida. Se encontraron ${coincidencias}/${coincidenciasRequeridas} huellas válidas.`,
-      coincidencias,
-      requeridas: coincidenciasRequeridas,
-      patron_usado: patron._id
-    };
-
-  } catch (error) {
-    this.logger.error(`Error en validación de patrón: ${error.message}`);
-    return {
-      valid: false,
-      message: `Error en validación: ${error.message}`
-    };
   }
-}
 
-// MÉTODOS AUXILIARES NECESARIOS:
+  // MÉTODOS AUXILIARES NECESARIOS:
 
-private async getCuentaAppByTitular(titularId: string) {
-  // Aquí deberías llamar al microservicio de usuarios
-  // Para obtener la cuenta app del titular
-  try {
-    return await firstValueFrom(
-      this.usersClient.send('users.getCuentaAppByPersona', titularId)
-    );
-  } catch (error) {
-    this.logger.error(`Error al obtener cuenta app: ${error.message}`);
-    return null;
+  private async getCuentaAppByTitular(titularId: string) {
+    // Aquí deberías llamar al microservicio de usuarios
+    // Para obtener la cuenta app del titular
+    try {
+      return await firstValueFrom(
+        this.usersClient.send('users.getCuentaAppByPersona', titularId)
+      );
+    } catch (error) {
+      this.logger.error(`Error al obtener cuenta app: ${error.message}`);
+      return null;
+    }
   }
-}
 
-private async getDedosPatronUsuario(cuentaAppId: string) {
-  // Este método debería llamar al microservicio de fingerprints/patterns
-  // Para obtener los dedos patrón del usuario
-  // Por simplicidad, aquí muestro la lógica directa:
-  
-  // En un ambiente real, esto sería una llamada a otro microservicio:
-  // return await firstValueFrom(
-  //   this.patternsClient.send('patterns.getDedosPatronByCuentaApp', cuentaAppId)
-  // );
-  
-  // Lógica temporal (deberías moverla al microservicio correspondiente):
-  return []; // Placeholder
-}
+  private async getDedosPatronUsuario(cuentaAppId: string) {
+    // Este método debería llamar al microservicio de fingerprints/patterns
+    // Para obtener los dedos patrón del usuario
+    // Por simplicidad, aquí muestro la lógica directa:
 
-private verifySensorId(sensorId: string, storedHash: string): boolean {
-  try {
-    const ENCRYPTION_KEY = process.env.FINGERPRINT_ENCRYPTION_KEY || 'your-32-character-secret-key-here!';
-    
-    const parts = storedHash.split(':');
-    if (parts.length !== 2) return false;
+    // En un ambiente real, esto sería una llamada a otro microservicio:
+    // return await firstValueFrom(
+    //   this.patternsClient.send('patterns.getDedosPatronByCuentaApp', cuentaAppId)
+    // );
 
-    const [salt, expectedHash] = parts;
-    
-    const dataToHash = sensorId + ENCRYPTION_KEY + salt;
-    const calculatedHash = require('crypto')
-      .createHash('sha256')
-      .update(dataToHash)
-      .digest('hex');
-
-    return calculatedHash === expectedHash;
-  } catch (error) {
-    return false;
+    // Lógica temporal (deberías moverla al microservicio correspondiente):
+    return []; // Placeholder
   }
-}
+
+  private verifySensorId(sensorId: string, storedHash: string): boolean {
+    try {
+      const ENCRYPTION_KEY = process.env.FINGERPRINT_ENCRYPTION_KEY || 'your-32-character-secret-key-here!';
+
+      const parts = storedHash.split(':');
+      if (parts.length !== 2) return false;
+
+      const [salt, expectedHash] = parts;
+
+      const dataToHash = sensorId + ENCRYPTION_KEY + salt;
+      const calculatedHash = require('crypto')
+        .createHash('sha256')
+        .update(dataToHash)
+        .digest('hex');
+
+      return calculatedHash === expectedHash;
+    } catch (error) {
+      return false;
+    }
+  }
 
 }
