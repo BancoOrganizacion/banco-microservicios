@@ -54,7 +54,7 @@ export class Transaccion extends Document {
   @Prop({ 
     type: String, 
     enum: EstadoTransaccion,
-    default: EstadoTransaccion.PENDIENTE 
+    default: EstadoTransaccion.COMPLETADA 
   })
   estado: EstadoTransaccion;
 
