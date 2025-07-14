@@ -255,14 +255,14 @@ export class PatternService {
 
     // Paso 2: VALIDAR RESTRICCIONES POR MONTO
     const restricciones = cuentaTransaccional.restricciones || [];
-    
-    const restriccionAplicable = restricciones.find(r => 
+
+    const restriccionAplicable = restricciones.find(r =>
       montoNumerico >= r.monto_desde && montoNumerico <= r.monto_hasta
     );
-    
+
     if (!restriccionAplicable) {
-      return { 
-        valid: true, 
+      return {
+        valid: true,
         message: 'Transacción válida - Sin restricción de autenticación para este monto.',
         requiere_autenticacion: false,
         monto_validado: montoNumerico
@@ -270,8 +270,8 @@ export class PatternService {
     }
 
     if (!restriccionAplicable.patron_autenticacion) {
-      return { 
-        valid: true, 
+      return {
+        valid: true,
         message: 'Transacción válida - Restricción encontrada pero sin patrón específico requerido.',
         requiere_autenticacion: false,
         restriccion_aplicada: {
@@ -282,8 +282,8 @@ export class PatternService {
     }
 
     // Paso 3: Obtener cuenta app del titular
-    const cuentaApp = await this.cuentaAppModel.findOne({ 
-      persona: cuentaTransaccional.titular 
+    const cuentaApp = await this.cuentaAppModel.findOne({
+      persona: cuentaTransaccional.titular
     });
     if (!cuentaApp) {
       return { valid: false, message: 'Cuenta de aplicación no encontrada.' };
@@ -296,32 +296,32 @@ export class PatternService {
       .exec();
 
     if (!patronRequerido) {
-      return { 
-        valid: false, 
-        message: 'Patrón de autenticación requerido no encontrado.' 
+      return {
+        valid: false,
+        message: 'Patrón de autenticación requerido no encontrado.'
       };
     }
 
     if (!patronRequerido.activo) {
-      return { 
-        valid: false, 
-        message: 'Patrón de autenticación requerido está inactivo.' 
+      return {
+        valid: false,
+        message: 'Patrón de autenticación requerido está inactivo.'
       };
     }
 
     // Paso 5: Obtener SOLO los dedos que están en el patrón específico
     const dedosPatronEspecificos = await this.dedoPatronModel
-      .find({ 
+      .find({
         _id: { $in: patronRequerido.dedos_patron },
-        id_cuenta_app: cuentaApp._id 
+        id_cuenta_app: cuentaApp._id
       })
       .populate('dedos_registrados')
       .exec();
 
     if (dedosPatronEspecificos.length === 0) {
-      return { 
-        valid: false, 
-        message: 'No se encontraron dedos válidos para el patrón requerido.' 
+      return {
+        valid: false,
+        message: 'No se encontraron dedos válidos para el patrón requerido.'
       };
     }
 
@@ -332,15 +332,15 @@ export class PatternService {
     for (let i = 0; i < sensorIds.length; i++) {
       const sensorId = sensorIds[i];
       let encontrado = false;
-      
+
       for (let j = 0; j < dedosPatronEspecificos.length; j++) {
         const dedoPatron = dedosPatronEspecificos[j];
         const storedHash = dedoPatron.dedos_registrados?.huella;
-        
+
         if (storedHash && this.verifySensorId(sensorId, storedHash)) {
           coincidencias++;
           encontrado = true;
-          
+
           detallesValidacion.push({
             sensorId,
             dedo: dedoPatron.dedos_registrados.dedo,
@@ -351,7 +351,7 @@ export class PatternService {
           break;
         }
       }
-      
+
       if (!encontrado) {
         detallesValidacion.push({
           sensorId,
@@ -366,7 +366,7 @@ export class PatternService {
 
     return {
       valid: esValido,
-      message: esValido 
+      message: esValido
         ? `Patrón válido. Compra autorizada con patrón "${patronRequerido.nombre}".`
         : `Autenticación fallida. Se encontraron ${coincidencias}/${minimoRequerido} huellas válidas del patrón requerido.`,
       requiere_autenticacion: true,
@@ -390,80 +390,114 @@ export class PatternService {
   /**
    * Validar patrón con sensor IDs específicos
    */
-  async validarPatronConSensorIds(patronId: string, sensorIds: string[]) {
-    try {
-      const patron = await this.patronAutenticacionModel
-        .findById(patronId)
-        .populate({
-          path: 'dedos_patron',
-          populate: {
-            path: 'dedos_registrados',
-            model: 'DedoRegistrado'
-          }
-        })
-        .exec();
-
-      if (!patron || !patron.activo) {
-        return { 
-          valid: false, 
-          message: 'Patrón de autenticación no encontrado o inactivo.' 
-        };
-      }
-
-      let coincidencias = 0;
-      const detallesValidacion = [];
-
-      for (const sensorId of sensorIds) {
-        let encontrado = false;
-        
-        for (const dedoPatron of patron.dedos_patron) {
-          if (dedoPatron.dedos_registrados && dedoPatron.dedos_registrados.huella) {
-            const hashAlmacenado = dedoPatron.dedos_registrados.huella;
-            
-            if (this.verifySensorId(sensorId, hashAlmacenado)) {
-              coincidencias++;
-              encontrado = true;
-              
-              detallesValidacion.push({
-                sensorId,
-                dedo: dedoPatron.dedos_registrados.dedo,
-                orden: dedoPatron.orden,
-                valido: true
-              });
-              break;
-            }
-          }
+async validarPatronConSensorIds(patronId: string, sensorIds: string[]) {
+  try {
+    const patron = await this.patronAutenticacionModel
+      .findById(patronId)
+      .populate({
+        path: 'dedos_patron',
+        populate: {
+          path: 'dedos_registrados',
+          model: 'DedoRegistrado'
         }
-        
-        if (!encontrado) {
-          detallesValidacion.push({
-            sensorId,
-            valido: false
-          });
-        }
-      }
+      })
+      .exec();
 
-      const coincidenciasRequeridas = Math.min(3, patron.dedos_patron.length);
-      const esValido = coincidencias >= coincidenciasRequeridas;
-
-      return {
-        valid: esValido,
-        message: esValido 
-          ? 'Patrón válido. Transacción autorizada.'
-          : `Huellas insuficientes. Se encontraron ${coincidencias}/${coincidenciasRequeridas} requeridas.`,
-        coincidencias,
-        total: sensorIds.length,
-        requeridas: coincidenciasRequeridas,
-        detalles: detallesValidacion
-      };
-
-    } catch (error) {
-      return {
-        valid: false,
-        message: `Error en validación: ${error.message}`
+    if (!patron || !patron.activo) {
+      return { 
+        valid: false, 
+        message: 'Patrón de autenticación no encontrado o inactivo.' 
       };
     }
+
+    // ✅ CRUCIAL: Ordenar por campo 'orden' para tener secuencia correcta
+    const dedosOrdenados = patron.dedos_patron.sort((a, b) => a.orden - b.orden);
+
+    console.log('🔍 VALIDACIÓN POSICIÓN POR POSICIÓN');
+    console.log('Array registrado:', dedosOrdenados.map(d => d.dedos_registrados?.dedo));
+    console.log('Array recibido: count =', sensorIds.length);
+
+    // ✅ VALIDAR que coincida la cantidad
+    if (sensorIds.length !== dedosOrdenados.length) {
+      return {
+        valid: false,
+        message: `Cantidad incorrecta. Esperado: ${dedosOrdenados.length}, Recibido: ${sensorIds.length}`,
+      };
+    }
+
+    let coincidenciasCorrectas = 0;
+    const detallesValidacion = [];
+
+    // ✅ COMPARACIÓN DIRECTA: posición[i] vs posición[i]
+    for (let i = 0; i < sensorIds.length; i++) {
+      const sensorIdRecibido = sensorIds[i];           // Lo que envía el usuario
+      const dedoEsperado = dedosOrdenados[i];          // Lo que está en BD en esa posición
+      
+      console.log(`\n--- Posición ${i} ---`);
+      console.log(`Recibido: SensorId en posición ${i}`);
+      console.log(`Esperado: ${dedoEsperado.dedos_registrados?.dedo} (orden ${dedoEsperado.orden})`);
+
+      if (!dedoEsperado.dedos_registrados?.huella) {
+        console.log(`❌ Sin huella registrada en posición ${i}`);
+        detallesValidacion.push({
+          posicion: i,
+          esperado: dedoEsperado.dedos_registrados?.dedo,
+          orden: dedoEsperado.orden,
+          valido: false,
+          razon: 'Sin huella registrada'
+        });
+        continue;
+      }
+
+      // ✅ VERIFICAR: huella en posición[i] == huella esperada en posición[i]
+      const hashAlmacenado = dedoEsperado.dedos_registrados.huella;
+      const coincideEnPosicion = this.verifySensorId(sensorIdRecibido, hashAlmacenado);
+
+      if (coincideEnPosicion) {
+        coincidenciasCorrectas++;
+        console.log(`✅ MATCH en posición ${i}: ${dedoEsperado.dedos_registrados.dedo}`);
+      } else {
+        console.log(`❌ NO MATCH en posición ${i}`);
+      }
+
+      detallesValidacion.push({
+        posicion: i,
+        esperado: dedoEsperado.dedos_registrados.dedo,
+        orden: dedoEsperado.orden,
+        valido: coincideEnPosicion,
+        razon: coincideEnPosicion ? 'Válido en posición correcta' : 'Huella no coincide en esta posición'
+      });
+    }
+
+    // ✅ CRITERIO DE VALIDACIÓN
+    const coincidenciasRequeridas = Math.min(3, dedosOrdenados.length);
+    const esValido = coincidenciasCorrectas >= coincidenciasRequeridas;
+
+    console.log(`\n=== RESULTADO ===`);
+    console.log(`Coincidencias en posición correcta: ${coincidenciasCorrectas}/${sensorIds.length}`);
+    console.log(`Requeridas: ${coincidenciasRequeridas}`);
+    console.log(`Resultado: ${esValido ? '✅ VÁLIDO' : '❌ INVÁLIDO'}`);
+
+    return {
+      valid: esValido,
+      message: esValido 
+        ? 'Patrón válido con orden correcto. Transacción autorizada.'
+        : `Insuficientes coincidencias en posiciones correctas. ${coincidenciasCorrectas}/${coincidenciasRequeridas} requeridas.`,
+      coincidenciasCorrectas,
+      totalPosiciones: sensorIds.length,
+      requeridas: coincidenciasRequeridas,
+      detalles: detallesValidacion
+    };
+
+  } catch (error) {
+    console.error('Error en validación:', error);
+    return {
+      valid: false,
+      message: `Error en validación: ${error.message}`
+    };
   }
+}
+
 
   /**
    * Verificar ID del sensor contra hash almacenado
@@ -477,7 +511,7 @@ export class PatternService {
 
       const [salt, expectedHash] = parts;
       const dataToHash = sensorId + this.ENCRYPTION_KEY + salt;
-      
+
       const calculatedHash = crypto.createHash('sha256')
         .update(dataToHash)
         .digest('hex');
