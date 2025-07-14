@@ -469,23 +469,17 @@ async validarPatronConSensorIds(patronId: string, sensorIds: string[]) {
       });
     }
 
-    // ✅ CRITERIO DE VALIDACIÓN
-    const coincidenciasRequeridas = Math.min(3, dedosOrdenados.length);
-    const esValido = coincidenciasCorrectas >= coincidenciasRequeridas;
-
-    console.log(`\n=== RESULTADO ===`);
-    console.log(`Coincidencias en posición correcta: ${coincidenciasCorrectas}/${sensorIds.length}`);
-    console.log(`Requeridas: ${coincidenciasRequeridas}`);
-    console.log(`Resultado: ${esValido ? '✅ VÁLIDO' : '❌ INVÁLIDO'}`);
+    
+    const esValido = coincidenciasCorrectas === sensorIds.length;
 
     return {
       valid: esValido,
       message: esValido 
         ? 'Patrón válido con orden correcto. Transacción autorizada.'
-        : `Insuficientes coincidencias en posiciones correctas. ${coincidenciasCorrectas}/${coincidenciasRequeridas} requeridas.`,
+        : `Patrón incorrecto ${coincidenciasCorrectas}/${sensorIds.length} posiciones correctas, Se requiere coincidencia total`,
       coincidenciasCorrectas,
       totalPosiciones: sensorIds.length,
-      requeridas: coincidenciasRequeridas,
+    
       detalles: detallesValidacion
     };
 
