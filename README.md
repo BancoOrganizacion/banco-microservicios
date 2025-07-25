@@ -24,3 +24,5 @@ Auth Service: http://localhost:3002/api/docs
 Users Service: http://localhost:3001/api/docs
 
 
+# VIDEO DEMOSTRATIVO
+[Video del funcionamiento del sistema](https://epnecuador-my.sharepoint.com/:v:/g/personal/anabelen_campoverde_epn_edu_ec/EQYw3j44HwVLkOQ6FlO_1DEBGQsFYrRe0yI67TRo38D94g?nav=eyJyZWZlcnJhbEluZm8iOnsicmVmZXJyYWxBcHAiOiJPbmVEcml2ZUZvckJ1c2luZXNzIiwicmVmZXJyYWxBcHBQbGF0Zm9ybSI6IldlYiIsInJlZmVycmFsTW9kZSI6InZpZXciLCJyZWZlcnJhbFZpZXciOiJNeUZpbGVzTGlua0NvcHkifX0&e=XtXHp1)
