@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, ForbiddenException, ConflictException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { DedoRegistrado, Dedos } from 'shared-models';
@@ -219,15 +219,16 @@ export class FingerprintService {
           if (!account) continue;
 
           const cuentasTransaccionales = await this.cuentaModel
-            .find({titular: account.persona});
+            .find({ titular: account.persona });
 
           const cuentas = cuentasTransaccionales.map(cuenta => ({
             id: cuenta._id.toString(),
-            numero_cuenta: cuenta.numero_cuenta}))
+            numero_cuenta: cuenta.numero_cuenta
+          }))
 
           return {
             found: true,
-            cuentasDeUsuario:cuentas,
+            cuentasDeUsuario: cuentas,
           };
         }
       }
@@ -239,6 +240,93 @@ export class FingerprintService {
 
     } catch (error) {
       throw new BadRequestException(`Error: ${error.message}`);
+    }
+  }
+  async deleteFinger(fingerId: string, userId: string) {
+    try {
+      const cuentaApp = await this.cuentaAppModel.findOne({ persona: userId });
+      if (!cuentaApp) {
+        throw new NotFoundException('Usuario no encontrado');
+      }
+
+      // Verificar que la huella pertenece al usuario
+      const dedoPatron = await this.dedoPatronModel.findOne({
+        dedos_registrados: fingerId,
+        id_cuenta_app: cuentaApp._id
+      });
+
+      if (!dedoPatron) {
+        throw new ForbiddenException('No tienes acceso a esta huella');
+      }
+
+      // Verificar que no sea parte de un patrón activo en uso
+      const patronesUsandoEstaHuella = await this.dedoPatronModel.countDocuments({
+        dedos_registrados: fingerId
+      });
+
+      if (patronesUsandoEstaHuella > 1) {
+        throw new ConflictException('No se puede eliminar: esta huella está siendo usada en múltiples patrones');
+      }
+
+      // Eliminar el patrón asociado
+      await this.dedoPatronModel.findByIdAndDelete(dedoPatron._id);
+
+      // Eliminar la huella
+      const deletedFinger = await this.dedoRegistradoModel.findByIdAndDelete(fingerId);
+
+      if (!deletedFinger) {
+        throw new NotFoundException('Huella no encontrada');
+      }
+
+      return {
+        success: true,
+        message: 'Huella eliminada exitosamente'
+      };
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof ForbiddenException || error instanceof ConflictException) {
+        throw error;
+      }
+      throw new BadRequestException(`Error al eliminar la huella: ${error.message}`);
+    }
+  }
+  async updateFinger(fingerId: string, updateData: { dedo?: Dedos; huella?: string }, userId: string) {
+    try {
+      const cuentaApp = await this.cuentaAppModel.findOne({ persona: userId });
+      if (!cuentaApp) {
+        throw new NotFoundException('Usuario no encontrado');
+      }
+
+      // Verificar que la huella pertenece al usuario
+      const dedoPatron = await this.dedoPatronModel.findOne({
+        dedos_registrados: fingerId,
+        id_cuenta_app: cuentaApp._id
+      });
+
+      if (!dedoPatron) {
+        throw new ForbiddenException('No tienes acceso a esta huella');
+      }
+
+      // Actualizar la huella
+      const updatedFinger = await this.dedoRegistradoModel.findByIdAndUpdate(
+        fingerId,
+        updateData,
+        { new: true }
+      );
+
+      if (!updatedFinger) {
+        throw new NotFoundException('Huella no encontrada');
+      }
+
+      return {
+        success: true,
+        message: 'Huella actualizada exitosamente',
+        finger: updatedFinger
+      };
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof ForbiddenException) {
+        throw error;
+      }
+      throw new BadRequestException(`Error al actualizar la huella: ${error.message}`);
     }
   }
 }
